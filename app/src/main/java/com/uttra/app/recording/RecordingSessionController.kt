@@ -8,7 +8,13 @@ class RecordingSessionController(private val audioRecorder: AudioRecorder) {
     var state = RecordingState.IDLE
         private set
 
-    fun startRecording(): Result<Unit> {
+    var activeSessionId: String? = null
+        private set
+
+    fun startRecording(sessionId: String): Result<Unit> {
+        require(sessionId.isNotBlank()) {
+            "Session ID must not be blank"
+        }
         if (state != RecordingState.IDLE) {
             return Result.failure(
                 IllegalStateException("Recording already active")
@@ -19,6 +25,8 @@ class RecordingSessionController(private val audioRecorder: AudioRecorder) {
             audioRecorder.start()
                 .onSuccess {
                     state = RecordingState.RECORDING
+                    activeSessionId = sessionId
+
                 }
                 .onFailure {
                     runCatching { audioRecorder.cancel() }
@@ -29,8 +37,10 @@ class RecordingSessionController(private val audioRecorder: AudioRecorder) {
         }
     }
 
-    fun stopRecording(): Result<File> {
-        if (state != RecordingState.RECORDING) {
+    fun stopRecording(sessionId: String): Result<File> {
+        if (state != RecordingState.RECORDING ||
+            activeSessionId != sessionId
+        ) {
             return Result.failure(
                 IllegalStateException("No active recording")
             )
@@ -38,20 +48,41 @@ class RecordingSessionController(private val audioRecorder: AudioRecorder) {
 
         return try {
             audioRecorder.stop()
-                .also {
+                .also {result ->
+                    if (result.isFailure) {
+                        runCatching { audioRecorder.cancel() }
+                    }
                     state = RecordingState.IDLE
+                    activeSessionId = null
                 }
         } catch (e: Exception) {
             state = RecordingState.IDLE
             runCatching { audioRecorder.cancel() }
+            activeSessionId = null
             Result.failure(e)
         }
     }
+
     fun cancelRecording() {
         try {
             audioRecorder.cancel()
         } finally {
             state = RecordingState.IDLE
+            activeSessionId= null
+        }
+    }
+    fun cancelRecording(sessionId: String): Result<Unit> {
+        if (
+            state != RecordingState.RECORDING ||
+            activeSessionId != sessionId
+        ) {
+            return Result.failure(
+                IllegalStateException("No matching active recording")
+            )
+        }
+
+        return runCatching {
+            cancelRecording()
         }
     }
 }

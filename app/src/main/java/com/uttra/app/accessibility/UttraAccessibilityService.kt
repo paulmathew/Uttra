@@ -18,12 +18,13 @@ import com.uttra.app.core.logging.logw
 import com.uttra.app.overlay.OverlayRecordingListener
 import com.uttra.app.overlay.UttraOverlayController
 import com.uttra.app.recording.MicrophoneRecordingService
+import java.util.UUID
 
 @SuppressLint("AccessibilityPolicy")
 class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListener {
     private lateinit var overlayController: UttraOverlayController
     private val handler = Handler(Looper.getMainLooper())
-
+    private var activeSessionId: String? = null
     override fun onServiceConnected() {
         super.onServiceConnected()
         overlayController = UttraOverlayController(this, recordingListener = this)
@@ -111,6 +112,9 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
     override fun onStartRequested() {
         logd { "Overlay requested START recording" }
+        val sessionId = UUID.randomUUID().toString()
+        activeSessionId = sessionId
+        logd { "START requested for session=$sessionId" }
 
         val receiver = object : ResultReceiver(
             Handler(Looper.getMainLooper())
@@ -119,6 +123,10 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                 resultCode: Int,
                 resultData: Bundle?
             ) {
+                if (activeSessionId != sessionId) {
+                    logw { "Ignoring stale recording result" }
+                    return
+                }
                 when (resultCode) {
                     MicrophoneRecordingService.RESULT_STARTED -> {
                         logd { "Overlay recording STARTED" }
@@ -127,6 +135,7 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
                     MicrophoneRecordingService.RESULT_FAILED -> {
                         logw { "Overlay recording START failed" }
+                        activeSessionId = null
                         overlayController.onRecordingFailed(
                             "Microphone service failed to start"
                         )
@@ -144,15 +153,24 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                 MicrophoneRecordingService.EXTRA_RESULT_RECEIVER,
                 receiver
             )
+            putExtra(
+                MicrophoneRecordingService.EXTRA_SESSION_ID,
+                sessionId
+            )
         }
 
         try {
             ContextCompat.startForegroundService(this, intent)
         } catch (e: Exception) {
             loge(e) { "Unable to request microphone service" }
-            overlayController.onRecordingFailed(
-                e.javaClass.simpleName
-            )
+
+            if (activeSessionId == sessionId) {
+                activeSessionId = null
+
+                overlayController.onRecordingFailed(
+                    e.javaClass.simpleName
+                )
+            }
         }
     }
 
@@ -160,6 +178,10 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
     override fun onStopRequested() {
         logd { "Overlay requested STOP recording" }
+        val sessionId = activeSessionId ?: run {
+            overlayController.onRecordingFailed("No active recording session")
+            return
+        }
 
         val receiver = object : ResultReceiver(
             Handler(Looper.getMainLooper())
@@ -168,14 +190,19 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                 resultCode: Int,
                 resultData: Bundle?
             ) {
+                if (activeSessionId != sessionId) {
+                    logw { "Ignoring stale STOP result" }
+                    return
+                }
                 when (resultCode) {
                     MicrophoneRecordingService.RESULT_STOPPED -> {
                         logd { "Overlay recording STOPPED" }
-
+                        activeSessionId = null
                         overlayController.onRecordingStopped()
                     }
 
                     MicrophoneRecordingService.RESULT_FAILED -> {
+                        activeSessionId = null
                         overlayController.onRecordingFailed(
                             "Failed to stop recording"
                         )
@@ -186,7 +213,8 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
         sendRecordingCommand(
             MicrophoneRecordingService.ACTION_STOP,
-            receiver
+            receiver,
+            sessionId = sessionId
         )
     }
 
@@ -194,6 +222,12 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
     override fun onCancelRequested() {
         logd { "Overlay requested CANCEL recording" }
+        val sessionId = activeSessionId ?: run {
+            overlayController.onRecordingFailed(
+                "No active recording session"
+            )
+            return
+        }
 
         val receiver = object : ResultReceiver(
             Handler(Looper.getMainLooper())
@@ -202,13 +236,19 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                 resultCode: Int,
                 resultData: Bundle?
             ) {
+                if (activeSessionId != sessionId) {
+                    logw { "Ignoring stale CANCEL result" }
+                    return
+                }
                 when (resultCode) {
                     MicrophoneRecordingService.RESULT_CANCELLED -> {
                         logd { "Overlay recording CANCELLED" }
+                        activeSessionId = null
                         overlayController.onRecordingCancelled()
                     }
 
                     MicrophoneRecordingService.RESULT_FAILED -> {
+                        activeSessionId = null
                         overlayController.onRecordingFailed(
                             "Failed to cancel recording"
                         )
@@ -219,7 +259,8 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
         sendRecordingCommand(
             MicrophoneRecordingService.ACTION_CANCEL,
-            receiver
+            receiver,
+            sessionId = sessionId
         )
     }
 
@@ -227,8 +268,10 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
     private fun sendRecordingCommand(
         action: String,
-        receiver: ResultReceiver
-    ) {
+        receiver: ResultReceiver,
+        sessionId: String,
+
+        ) {
         val intent = Intent(
             this,
             MicrophoneRecordingService::class.java
@@ -239,13 +282,17 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                 MicrophoneRecordingService.EXTRA_RESULT_RECEIVER,
                 receiver
             )
+            putExtra(
+                MicrophoneRecordingService.EXTRA_SESSION_ID,
+                sessionId
+            )
         }
 
         try {
             startService(intent)
         } catch (e: Exception) {
             loge(e) { "Failed to send recording command: $action" }
-
+            activeSessionId = null
             overlayController.onRecordingFailed(
                 e.javaClass.simpleName
             )

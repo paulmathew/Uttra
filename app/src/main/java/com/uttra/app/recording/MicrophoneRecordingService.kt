@@ -38,6 +38,7 @@ class MicrophoneRecordingService : Service() {
 
         const val RESULT_STOPPED = 3
         const val RESULT_CANCELLED = 4
+        const val EXTRA_SESSION_ID = "com.uttra.app.extra.SESSION_ID"
     }
     private lateinit var recordingController: RecordingSessionController
 
@@ -55,6 +56,7 @@ class MicrophoneRecordingService : Service() {
         val receiver = intent?.getParcelableExtra<ResultReceiver>(
             EXTRA_RESULT_RECEIVER
         )
+        val sessionId = intent?.getStringExtra(EXTRA_SESSION_ID)
         when (intent?.action) {
             ACTION_START -> {
                 logd { "1. ACTION_START received" }
@@ -66,6 +68,12 @@ class MicrophoneRecordingService : Service() {
                     return START_NOT_STICKY
                 }
 
+                if (sessionId.isNullOrBlank()) {
+                    logw { "START rejected: missing session ID" }
+                    receiver?.send(RESULT_FAILED, null)
+                    stopSelfResult(startId)
+                    return START_NOT_STICKY
+                }
                 try {
                     promoteToForeground()
 
@@ -73,7 +81,7 @@ class MicrophoneRecordingService : Service() {
 
                     logd { "3. Calling recordingController.startRecording()" }
 
-                    recordingController.startRecording()
+                    recordingController.startRecording(sessionId = sessionId)
                         .onSuccess {
                             receiver?.send(RESULT_STARTED, null)
                             logd { "4. SUCCESS: Audio recording started" }
@@ -99,7 +107,15 @@ class MicrophoneRecordingService : Service() {
 
             ACTION_STOP -> {
                 logd { "ACTION_STOP received" }
-                recordingController.stopRecording()
+                if (
+                    sessionId.isNullOrBlank() ||
+                    recordingController.activeSessionId != sessionId
+                ) {
+                    logw { "STOP rejected: session mismatch" }
+                    receiver?.send(RESULT_FAILED, null)
+                    return START_NOT_STICKY
+                }
+                recordingController.stopRecording(sessionId)
                     .onSuccess { file ->
                         receiver?.send(RESULT_STOPPED, null)
                         logd {
@@ -120,20 +136,24 @@ class MicrophoneRecordingService : Service() {
             ACTION_CANCEL -> {
                 logd { "ACTION_CANCEL received" }
 
-
-                try {
-                    recordingController.cancelRecording()
-
-                    logd { "Recording cancelled and resources released" }
-
-                    receiver?.send(RESULT_CANCELLED, null)
-                } catch (e: Exception) {
-                    loge(e) { "Failed to cancel recording" }
-
+                if (
+                    sessionId.isNullOrBlank() ||
+                    recordingController.activeSessionId != sessionId
+                ) {
+                    logw { "Cancel rejected: session mismatch" }
                     receiver?.send(RESULT_FAILED, null)
-                } finally {
-                    stopSelfResult(startId)
+                    return START_NOT_STICKY
                 }
+                recordingController.cancelRecording(sessionId)
+                    .onSuccess {
+                        receiver?.send(RESULT_CANCELLED, null)
+                    }
+                    .onFailure { error ->
+                        loge(error) { "Failed to cancel recording" }
+                        receiver?.send(RESULT_FAILED, null)
+                    }
+
+                stopSelfResult(startId)
 
             }
 
