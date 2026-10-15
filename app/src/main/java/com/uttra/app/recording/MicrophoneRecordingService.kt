@@ -19,6 +19,12 @@ import com.uttra.app.audio.AndroidAudioRecorder
 import com.uttra.app.core.logging.logd
 import com.uttra.app.core.logging.loge
 import com.uttra.app.core.logging.logw
+import com.uttra.app.transcription.AndroidAudioDecoder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 
 class MicrophoneRecordingService : Service() {
@@ -40,6 +46,7 @@ class MicrophoneRecordingService : Service() {
         const val RESULT_CANCELLED = 4
         const val EXTRA_SESSION_ID = "com.uttra.app.extra.SESSION_ID"
     }
+
     private lateinit var recordingController: RecordingSessionController
 
 
@@ -122,6 +129,22 @@ class MicrophoneRecordingService : Service() {
                             "Recording saved: ${file.absolutePath}, " +
                                     "size=${file.length()} bytes"
                         }
+
+                        CoroutineScope(Dispatchers.IO).launch() {
+                            AndroidAudioDecoder()
+                                .decodeToPcm16kMono(file)
+                                .onSuccess { samples ->
+                                    logd {
+                                        "Decoder test PASSED: samples=${samples.size}"
+                                    }
+                                }
+                                .onFailure { error ->
+                                    loge(error) {
+                                        "Decoder test FAILED"
+                                    }
+                                }
+                        }
+
                     }
                     .onFailure { error ->
                         loge(error) { "Failed to stop recording" }
