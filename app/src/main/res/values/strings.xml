@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Uttra</string>
+    <string name="accessibility_service_description">Uttra detects editable text fields to offer voice dictation. It does not need to read the text you have typed.</string>
+
+</resources>
