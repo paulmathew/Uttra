@@ -27,6 +27,7 @@ import com.uttra.app.onBoarding.PermissionChecker
 import com.uttra.app.onBoarding.PermissionScreen
 import com.uttra.app.onBoarding.PermissionViewModel
 import com.uttra.app.recording.MicrophoneRecordingService
+import com.uttra.app.ui.home.UttraHomeScreen
 import com.uttra.app.ui.test.AudioRecorderTestScreen
 import com.uttra.app.ui.theme.UttraTheme
 
@@ -44,11 +45,7 @@ class MainActivity : ComponentActivity() {
                 logw { "Microphone permission denied" }
             }
         }
-    private val audioRecorder by lazy {
-        AndroidAudioRecorder(applicationContext)
-    }
-    private var isRecording by mutableStateOf(false)
-    private var showTestScreen by mutableStateOf(false)
+
 
 
     private val notificationPermissionLauncher =
@@ -66,9 +63,7 @@ class MainActivity : ComponentActivity() {
 
 
         }
-    private val permissionChecker by lazy {
-        PermissionChecker(applicationContext)
-    }
+
 
     private val permissionViewModel by viewModels<PermissionViewModel> {
         object : ViewModelProvider.Factory {
@@ -83,6 +78,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var showHomeScreen by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,8 +92,7 @@ class MainActivity : ComponentActivity() {
 
                 val status by permissionViewModel.permissionStatus
                     .collectAsStateWithLifecycle()
-                if (!status.canUseVoiceInput || !showTestScreen) {
-
+                if (!status.canUseVoiceInput || !showHomeScreen){
                     PermissionScreen(
                         status = status,
                         onEnableAccessibility = {
@@ -121,76 +116,17 @@ class MainActivity : ComponentActivity() {
                         },
                         onContinue = {
                             if (status.canUseVoiceInput) {
-                                showTestScreen = true
+                                showHomeScreen = true
                             }
                             // Navigate to Uttra Home later
                         }
                     )
                 }
                 else {
-                    AudioRecorderTestScreen(
-                        isRecording = isRecording,
-                        onStart = {
-                            if (ContextCompat.checkSelfPermission(
-                                    this@MainActivity,
-                                    Manifest.permission.RECORD_AUDIO
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                audioRecorder.start()
-                                    .onSuccess {
-                                        isRecording = true
-                                        logd { "Recording started" }
-                                    }
-                                    .onFailure {
-                                        loge(it) { "Recording failed" }
-                                    }
-                            } else {
-                                microphonePermissionLauncher.launch(
-                                    Manifest.permission.RECORD_AUDIO
-                                )
-                            }
-                        },
-                        onStop = {
-                            audioRecorder.stop()
-                                .onSuccess { file ->
-                                    isRecording = false
-                                    logd {
-                                        "Recording saved: ${file.absolutePath}, " +
-                                                "size=${file.length()}"
-                                    }
-                                }
-                                .onFailure {
-                                    isRecording = false
-                                    loge(it) { "Stop failed" }
-                                }
-                        },
-                        onCancel = {
-                            audioRecorder.cancel()
-                            isRecording = false
-                            logd { "Recording cancelled" }
-                        },
-                        onStartService = {
-                            if (
-                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                ContextCompat.checkSelfPermission(
-                                    this@MainActivity,
-                                    Manifest.permission.POST_NOTIFICATIONS
-                                ) != PackageManager.PERMISSION_GRANTED
-                            ) {
-                                requestNotificationPermission()
-                            } else {
-                                startMicrophoneService()
-                            }
+                        UttraHomeScreen()
 
-                        },
-                        onStopService = {
-                            stopMicrophoneService()
-                        },
-                        onCancelService = {
-                            cancelMicrophoneService()
-                        },
-                    )
                 }
+
             }
         }
 
@@ -200,94 +136,11 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         permissionViewModel.refreshPermissions()
 
-        val status = permissionChecker.checkPermissions()
-
-        logd {
-            "Permissions: " +
-                    "Accessibility=${status.accessibilityEnabled}, " +
-                    "Microphone=${status.microphoneGranted}, " +
-                    "Notifications=${status.notificationsGranted}"
-        }
     }
     override fun onDestroy() {
-        audioRecorder.cancel()
         super.onDestroy()
     }
 
-    private fun requestMicrophonePermission() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            microphonePermissionLauncher.launch(
-                Manifest.permission.RECORD_AUDIO
-            )
-        }
-    }
-
-    private fun startMicrophoneService() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestMicrophonePermission()
-            return
-        }
-
-        val intent = Intent(
-            this,
-            MicrophoneRecordingService::class.java
-        ).apply {
-            action = MicrophoneRecordingService.ACTION_START
-        }
-
-        try {
-            ContextCompat.startForegroundService(this, intent)
-
-            logd { "Foreground service start requested" }
-        } catch (e: Exception) {
-            loge(e) { "Failed to request foreground service" }
-        }
-    }
-
-    private fun stopMicrophoneService() {
-        val intent = Intent(
-            this,
-            MicrophoneRecordingService::class.java
-        ).apply {
-            action = MicrophoneRecordingService.ACTION_STOP
-        }
-
-        startService(intent)
-        logd { "Foreground service stop requested" }
-    }
-    private fun cancelMicrophoneService() {
-        val intent = Intent(
-            this,
-            MicrophoneRecordingService::class.java
-        ).apply {
-            action = MicrophoneRecordingService.ACTION_CANCEL
-        }
-
-        startService(intent)
-    }
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            return
-        }
-
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermissionLauncher.launch(
-                Manifest.permission.POST_NOTIFICATIONS
-            )
-        }
-    }
 
 
 }
