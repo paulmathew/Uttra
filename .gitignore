@@ -13,3 +13,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+/app/libs/sherpa-onnx-1.13.8.aar

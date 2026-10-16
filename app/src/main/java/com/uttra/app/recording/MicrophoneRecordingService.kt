@@ -14,18 +14,20 @@ import android.os.ResultReceiver
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.uttra.app.MainActivity
-import com.uttra.app.R
 import com.uttra.app.audio.AndroidAudioRecorder
 import com.uttra.app.core.logging.logd
 import com.uttra.app.core.logging.loge
 import com.uttra.app.core.logging.logw
-import com.uttra.app.transcription.AndroidAudioDecoder
 import com.uttra.app.transcription.WhisperTestRunner
+import com.uttra.app.transcription.UttraSpeechTranscriber
+import com.uttra.app.transcription.TranscriptionLanguage
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
+
+import android.os.Bundle
 
 
 class MicrophoneRecordingService : Service() {
@@ -46,6 +48,16 @@ class MicrophoneRecordingService : Service() {
         const val RESULT_STOPPED = 3
         const val RESULT_CANCELLED = 4
         const val EXTRA_SESSION_ID = "com.uttra.app.extra.SESSION_ID"
+
+        private val transcriptionScope = CoroutineScope(
+            SupervisorJob() + Dispatchers.IO
+        )
+
+        const val RESULT_TRANSCRIPTION_READY = 5
+        const val RESULT_TRANSCRIPTION_FAILED = 6
+
+        const val EXTRA_TRANSCRIPTION_TEXT =
+            "com.uttra.app.extra.TRANSCRIPTION_TEXT"
     }
 
     private lateinit var recordingController: RecordingSessionController
@@ -130,10 +142,54 @@ class MicrophoneRecordingService : Service() {
                             "Recording saved: ${file.absolutePath}, " +
                                     "size=${file.length()} bytes"
                         }
-                        WhisperTestRunner.test(
-                            applicationContext,
-                            file
-                        )
+
+                        val appContext = applicationContext
+
+                        transcriptionScope.launch {
+                            try {
+                                logd {
+                                    "UTTRA LIVE: Starting Malayalam transcription"
+                                }
+
+                                val result = UttraSpeechTranscriber(appContext)
+                                    .transcribe(
+                                        audioFile = file,
+                                        language = TranscriptionLanguage.MALAYALAM
+                                    )
+
+                                result
+                                    .onSuccess { text ->
+                                        logd {
+                                            "UTTRA LIVE TRANSCRIPTION PASSED: text='$text'"
+                                        }
+                                        receiver?.send(
+                                            RESULT_TRANSCRIPTION_READY,
+                                            Bundle().apply {
+                                                putString(EXTRA_TRANSCRIPTION_TEXT, text)
+                                            }
+                                        )
+                                    }
+                                    .onFailure { error ->
+                                        loge(error) {
+                                            "UTTRA LIVE TRANSCRIPTION FAILED"
+                                        }
+                                        receiver?.send(RESULT_TRANSCRIPTION_FAILED, null)
+                                    }
+
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                loge(e) {
+                                    "UTTRA LIVE TRANSCRIPTION EXCEPTION"
+                                }
+                            }
+                        }
+
+
+//                        WhisperTestRunner.test(
+//                            applicationContext,
+//                            file
+//                        )
 //                        CoroutineScope(Dispatchers.IO).launch() {
 //                            AndroidAudioDecoder()
 //                                .decodeToPcm16kMono(file)

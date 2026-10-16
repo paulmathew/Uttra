@@ -297,8 +297,8 @@ class UttraOverlayController(
 
         updateState(OverlayState.Processing)
 
-        handler.removeCallbacks(processingCompletion)
-        handler.postDelayed(processingCompletion, 1500L)
+//        handler.removeCallbacks(processingCompletion)
+//        handler.postDelayed(processingCompletion, 1500L)
     }
 
     fun onRecordingCancelled() {

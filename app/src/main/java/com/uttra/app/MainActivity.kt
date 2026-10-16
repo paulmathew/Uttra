@@ -17,7 +17,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.uttra.app.core.logging.logd
+import com.uttra.app.core.logging.loge
 import com.uttra.app.core.logging.logw
 import com.uttra.app.onBoarding.PermissionChecker
 import com.uttra.app.onBoarding.PermissionScreen
@@ -26,6 +28,12 @@ import com.uttra.app.transcription.WhisperTestRunner
 import com.uttra.app.ui.home.UttraHomeScreen
 import com.uttra.app.ui.theme.UttraTheme
 import com.uttra.app.transcription.TranscriptionLanguage
+import com.uttra.app.transcription.IndicMalayalamSmokeTest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.uttra.app.transcription.IndicMalayalamTranscriber
+import java.io.File
+import com.uttra.app.transcription.UttraSpeechTranscriber
 
 class MainActivity : ComponentActivity() {
 
@@ -81,11 +89,42 @@ class MainActivity : ComponentActivity() {
 // TEMPORARY: Replay our saved Malayalam recording.
 
 
-        WhisperTestRunner.replayBenchmark(
-            context = applicationContext,
-            fileName = "mixed_01.m4a",
-            language = TranscriptionLanguage.AUTO
-        )
+//        if (BuildConfig.DEBUG) {
+//            lifecycleScope.launch(Dispatchers.IO) {
+//
+//                val benchmarkFile = File(
+//                    applicationContext.filesDir,
+//                    "speech_benchmarks/english_01.m4a"
+//                )
+//
+//
+//                val result = UttraSpeechTranscriber(
+//                    applicationContext
+//                ).transcribe(
+//                    audioFile = benchmarkFile,
+//                    language = TranscriptionLanguage.ENGLISH
+//                )
+//
+//
+//                result
+//                    .onSuccess { text ->
+//                        logd {
+//                            "INDIC INTEGRATION PASSED: text='$text'"
+//                        }
+//                    }
+//                    .onFailure { error ->
+//                        loge(error) {
+//                            "INDIC INTEGRATION FAILED"
+//                        }
+//                    }
+//            }
+//        }
+//
+//        WhisperTestRunner.replayBenchmark(
+//            context = applicationContext,
+//            fileName = "mixed_01.m4a",
+//            language = TranscriptionLanguage.AUTO
+//        )
 
 
 
