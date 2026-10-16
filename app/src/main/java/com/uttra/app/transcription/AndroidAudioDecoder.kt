@@ -429,12 +429,12 @@ class AndroidAudioDecoder : AudioDecoder {
             "Unsupported PCM encoding: $pcmEncoding"
         }
 
-        logd {
-            "Validated PCM output: " +
-                    "sampleRate=$sampleRate, " +
-                    "channels=$channelCount, " +
-                    "encoding=$pcmEncoding"
-        }
+//        logd {
+//            "Validated PCM output: " +
+//                    "sampleRate=$sampleRate, " +
+//                    "channels=$channelCount, " +
+//                    "encoding=$pcmEncoding"
+//        }
     }
 
     private fun isSamePcmFormat(

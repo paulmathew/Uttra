@@ -2,7 +2,6 @@ package com.uttra.app
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -14,22 +13,19 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uttra.app.audio.AndroidAudioRecorder
 import com.uttra.app.core.logging.logd
-import com.uttra.app.core.logging.loge
 import com.uttra.app.core.logging.logw
 import com.uttra.app.onBoarding.PermissionChecker
 import com.uttra.app.onBoarding.PermissionScreen
 import com.uttra.app.onBoarding.PermissionViewModel
-import com.uttra.app.recording.MicrophoneRecordingService
+import com.uttra.app.transcription.WhisperTestRunner
 import com.uttra.app.ui.home.UttraHomeScreen
-import com.uttra.app.ui.test.AudioRecorderTestScreen
 import com.uttra.app.ui.theme.UttraTheme
+import com.uttra.app.transcription.TranscriptionLanguage
 
 class MainActivity : ComponentActivity() {
 
@@ -47,7 +43,6 @@ class MainActivity : ComponentActivity() {
         }
 
 
-
     private val notificationPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -58,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 logw { "Notification permission denied" }
             }
 
-         //   startMicrophoneService()
+            //   startMicrophoneService()
             permissionViewModel.refreshPermissions()
 
 
@@ -82,6 +77,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+// TEMPORARY: Replay our saved Malayalam recording.
+
+
+        WhisperTestRunner.replayBenchmark(
+            context = applicationContext,
+            fileName = "mixed_01.m4a",
+            language = TranscriptionLanguage.AUTO
+        )
+
+
+
+
         enableEdgeToEdge()
         WindowInsetsControllerCompat(
             window,
@@ -92,7 +100,7 @@ class MainActivity : ComponentActivity() {
 
                 val status by permissionViewModel.permissionStatus
                     .collectAsStateWithLifecycle()
-                if (!status.canUseVoiceInput || !showHomeScreen){
+                if (!status.canUseVoiceInput || !showHomeScreen) {
                     PermissionScreen(
                         status = status,
                         onEnableAccessibility = {
@@ -121,9 +129,8 @@ class MainActivity : ComponentActivity() {
                             // Navigate to Uttra Home later
                         }
                     )
-                }
-                else {
-                        UttraHomeScreen()
+                } else {
+                    UttraHomeScreen()
 
                 }
 
@@ -137,10 +144,10 @@ class MainActivity : ComponentActivity() {
         permissionViewModel.refreshPermissions()
 
     }
+
     override fun onDestroy() {
         super.onDestroy()
     }
-
 
 
 }

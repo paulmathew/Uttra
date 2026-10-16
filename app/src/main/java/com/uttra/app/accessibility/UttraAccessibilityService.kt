@@ -79,11 +79,11 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
         val shouldShow = isEditable && keyboardVisible
 
-        logd {
-            "Editor focused: $isEditable, " +
-                    "Keyboard visible: $keyboardVisible, " +
-                    "Show overlay: $shouldShow"
-        }
+//        logd {
+//            "Editor focused: $isEditable, " +
+//                    "Keyboard visible: $keyboardVisible, " +
+//                    "Show overlay: $shouldShow"
+//        }
 
         overlayController.onEditorAvailabilityChanged(shouldShow)
 

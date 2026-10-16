@@ -20,6 +20,7 @@ import com.uttra.app.core.logging.logd
 import com.uttra.app.core.logging.loge
 import com.uttra.app.core.logging.logw
 import com.uttra.app.transcription.AndroidAudioDecoder
+import com.uttra.app.transcription.WhisperTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -129,21 +130,24 @@ class MicrophoneRecordingService : Service() {
                             "Recording saved: ${file.absolutePath}, " +
                                     "size=${file.length()} bytes"
                         }
-
-                        CoroutineScope(Dispatchers.IO).launch() {
-                            AndroidAudioDecoder()
-                                .decodeToPcm16kMono(file)
-                                .onSuccess { samples ->
-                                    logd {
-                                        "Decoder test PASSED: samples=${samples.size}"
-                                    }
-                                }
-                                .onFailure { error ->
-                                    loge(error) {
-                                        "Decoder test FAILED"
-                                    }
-                                }
-                        }
+                        WhisperTestRunner.test(
+                            applicationContext,
+                            file
+                        )
+//                        CoroutineScope(Dispatchers.IO).launch() {
+//                            AndroidAudioDecoder()
+//                                .decodeToPcm16kMono(file)
+//                                .onSuccess { samples ->
+//                                    logd {
+//                                        "Decoder test PASSED: samples=${samples.size}"
+//                                    }
+//                                }
+//                                .onFailure { error ->
+//                                    loge(error) {
+//                                        "Decoder test FAILED"
+//                                    }
+//                                }
+//                        }
 
                     }
                     .onFailure { error ->

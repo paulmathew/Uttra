@@ -23,16 +23,12 @@ android {
             "LOG_TAG",
             "\"Uttra\""
         )
-    }
-
-    buildTypes {
-        release {
-            optimization {
-                enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
-            }
+        ndk {
+            abiFilters += "arm64-v8a"
         }
     }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -41,6 +37,26 @@ android {
         compose = true
         buildConfig = true
     }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+
+
+    buildTypes {
+        release {
+            optimization {
+                enable = true
+                packageScope = setOf(
+                    "androidx.**",
+                    "kotlin.**",
+                    "kotlinx.**"
+                )
+            }
+        }
+    }
+
 }
 
 dependencies {

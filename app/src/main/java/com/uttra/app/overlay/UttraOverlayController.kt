@@ -263,9 +263,9 @@ class UttraOverlayController(
 
     fun onEditorAvailabilityChanged(available: Boolean) {
         editorAvailable = available
-        logd {
-            "Editor availability: available=$available, state=$currentState"
-        }
+//        logd {
+//            "Editor availability: available=$available, state=$currentState"
+//        }
         when (currentState) {
             OverlayState.Hidden -> {
                 if (available) show()
