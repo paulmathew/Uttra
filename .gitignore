@@ -18,3 +18,5 @@ local.properties
 /app/src/main/assets/models/*.bin
 /app/src/main/assets/models/*.onnx
 /app/src/main/assets/models/clear
+# Downloaded IndicConformer models
+/.local-models/
