@@ -443,6 +443,7 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                         editorTarget = null
                         editorTargetInvalidated = false
                         emptyInputSnapshot = null
+                        clearEditorSession()
                         overlayController.onProcessingCompleted()
 
                     }
@@ -453,6 +454,7 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                         logw {
                             "UTTRA CALLBACK: Transcription failed"
                         }
+                        clearEditorSession()
                         overlayController.onProcessingCompleted()
                         editorTarget = null
                     }
@@ -523,6 +525,8 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                     MicrophoneRecordingService.RESULT_CANCELLED -> {
                         logd { "Overlay recording CANCELLED" }
                         activeSessionId = null
+                        pendingTranscriptionSessionId = null
+                        clearEditorSession()
                         overlayController.onRecordingCancelled()
                     }
 
@@ -865,6 +869,18 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
         return true
     }
+
+
+    private fun clearEditorSession() {
+        editorTarget = null
+        editorTargetInvalidated = false
+        emptyInputSnapshot = null
+
+        logd {
+            "UTTRA SESSION: Editor state cleared"
+        }
+    }
+
 
 
 }
