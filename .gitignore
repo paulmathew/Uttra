@@ -14,3 +14,7 @@
 .cxx
 local.properties
 /app/libs/sherpa-onnx-1.13.8.aar
+# Speech recognition models - stored locally, not in GitHub
+/app/src/main/assets/models/*.bin
+/app/src/main/assets/models/*.onnx
+/app/src/main/assets/models/clear
