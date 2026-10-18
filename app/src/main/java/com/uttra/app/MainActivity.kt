@@ -86,45 +86,47 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-// TEMPORARY: Replay our saved Malayalam recording.
 
 
-//        if (BuildConfig.DEBUG) {
-//            lifecycleScope.launch(Dispatchers.IO) {
-//
-//                val benchmarkFile = File(
-//                    applicationContext.filesDir,
-//                    "speech_benchmarks/english_01.m4a"
-//                )
-//
-//
-//                val result = UttraSpeechTranscriber(
-//                    applicationContext
-//                ).transcribe(
-//                    audioFile = benchmarkFile,
-//                    language = TranscriptionLanguage.ENGLISH
-//                )
-//
-//
-//                result
-//                    .onSuccess { text ->
-//                        logd {
-//                            "INDIC INTEGRATION PASSED: text='$text'"
-//                        }
-//                    }
-//                    .onFailure { error ->
-//                        loge(error) {
-//                            "INDIC INTEGRATION FAILED"
-//                        }
-//                    }
-//            }
-//        }
-//
-//        WhisperTestRunner.replayBenchmark(
-//            context = applicationContext,
-//            fileName = "mixed_01.m4a",
-//            language = TranscriptionLanguage.AUTO
-//        )
+
+        // TEMPORARY: Debug-only automatic language detection benchmark.
+        if (
+            BuildConfig.DEBUG &&
+            intent?.action == "com.uttra.app.action.DEBUG_LANGUAGE_DETECTION"
+        ) {
+            val benchmarkName =
+                intent?.getStringExtra("benchmark_file")
+
+            when (benchmarkName) {
+                "english_01.m4a",
+                "english_02.m4a",
+                "english_03.m4a",
+                "malayalam_01.m4a",
+                "malayalam_02.m4a",
+                "malayalam_03.m4a",
+                "quiet_malayalam_01.m4a",
+                "quiet_english_01.m4a",
+                "live_ml_failed_03.m4a",
+                "live_auto_rejected_04.m4a",
+                "silence_01.m4a" -> {
+                    logd {
+                        "LANGUAGE DETECTION TRIGGER: $benchmarkName"
+                    }
+
+                    WhisperTestRunner.detectBenchmark(
+                        context = applicationContext,
+                        fileName = benchmarkName
+                    )
+                }
+
+                else -> {
+                    logw {
+                        "LANGUAGE DETECTION: Invalid benchmark: $benchmarkName"
+                    }
+                }
+            }
+        }
+
 
 
 

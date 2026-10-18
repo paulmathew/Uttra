@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 import android.os.Bundle
+import com.uttra.app.BuildConfig
 
 
 class MicrophoneRecordingService : Service() {
@@ -147,14 +148,20 @@ class MicrophoneRecordingService : Service() {
 
                         transcriptionScope.launch {
                             try {
+                                val selectedLanguage = if (BuildConfig.DEBUG) {
+                                    TranscriptionLanguage.AUTO
+                                } else {
+                                    TranscriptionLanguage.MALAYALAM
+                                }
+
                                 logd {
-                                    "UTTRA LIVE: Starting Malayalam transcription"
+                                    "UTTRA LIVE: Starting $selectedLanguage transcription"
                                 }
 
                                 val result = UttraSpeechTranscriber(appContext)
                                     .transcribe(
                                         audioFile = file,
-                                        language = TranscriptionLanguage.MALAYALAM
+                                        language = selectedLanguage
                                     )
 
                                 result

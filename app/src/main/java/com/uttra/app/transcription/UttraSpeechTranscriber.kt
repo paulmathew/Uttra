@@ -2,6 +2,7 @@
 package com.uttra.app.transcription
 
 import android.content.Context
+import com.uttra.app.BuildConfig
 import java.io.File
 
 internal class UttraSpeechTranscriber(
@@ -13,6 +14,9 @@ internal class UttraSpeechTranscriber(
 
     private val malayalamTranscriber =
         IndicMalayalamTranscriber(context.applicationContext)
+
+    private val languageDetector =
+        WhisperLanguageDetector(context.applicationContext)
 
     override suspend fun transcribe(
         audioFile: File,
@@ -35,13 +39,47 @@ internal class UttraSpeechTranscriber(
                 )
             }
 
+
             TranscriptionLanguage.AUTO -> {
-                Result.failure(
-                    UnsupportedOperationException(
-                        "Automatic language detection is not implemented yet"
+                if (!BuildConfig.DEBUG) {
+                    Result.failure(
+                        UnsupportedOperationException(
+                            "Automatic language routing is still experimental"
+                        )
                     )
-                )
+                } else {
+                    val detection = languageDetector
+                        .detect(audioFile)
+                        .getOrElse { error ->
+                            return Result.failure(error)
+                        }
+
+                    when (detection.language) {
+                        TranscriptionLanguage.ENGLISH -> {
+                            englishTranscriber.transcribe(
+                                audioFile,
+                                TranscriptionLanguage.ENGLISH
+                            )
+                        }
+
+                        TranscriptionLanguage.MALAYALAM -> {
+                            malayalamTranscriber.transcribe(
+                                audioFile,
+                                TranscriptionLanguage.MALAYALAM
+                            )
+                        }
+
+                        TranscriptionLanguage.AUTO, null -> {
+                            Result.failure(
+                                IllegalStateException(
+                                    "No reliable English or Malayalam speech detected"
+                                )
+                            )
+                        }
+                    }
+                }
             }
+
         }
     }
 }
