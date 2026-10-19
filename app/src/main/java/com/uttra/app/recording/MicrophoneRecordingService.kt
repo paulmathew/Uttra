@@ -59,6 +59,7 @@ class MicrophoneRecordingService : Service() {
 
         const val EXTRA_TRANSCRIPTION_TEXT =
             "com.uttra.app.extra.TRANSCRIPTION_TEXT"
+
     }
 
     private lateinit var recordingController: RecordingSessionController
@@ -67,6 +68,13 @@ class MicrophoneRecordingService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+
+        // Clean up orphaned app recordings after process death or an interrupted session.
+        val cutoffMs = System.currentTimeMillis() - 15 * 60 * 1000L
+        cacheDir.listFiles()?.filter {
+            it.isFile && it.name.startsWith("uttra_") &&
+                    it.name.endsWith(".m4a") && it.lastModified() < cutoffMs
+        }?.forEach { it.delete() }
 
         recordingController = RecordingSessionController(AndroidAudioRecorder(applicationContext))
         logd { "MicrophoneRecordingService onCreated" }
@@ -138,6 +146,13 @@ class MicrophoneRecordingService : Service() {
                 }
                 recordingController.stopRecording(sessionId)
                     .onSuccess { file ->
+                        // Stop is acknowledged before starting asynchronous transcription.
+                        val selectedLanguage = if (BuildConfig.DEBUG) {
+                            TranscriptionLanguage.AUTO
+                        } else {
+                            TranscriptionLanguage.MALAYALAM
+                        }
+
                         receiver?.send(RESULT_STOPPED, null)
                         logd {
                             "Recording saved: ${file.absolutePath}, " +
@@ -148,12 +163,6 @@ class MicrophoneRecordingService : Service() {
 
                         transcriptionScope.launch {
                             try {
-                                val selectedLanguage = if (BuildConfig.DEBUG) {
-                                    TranscriptionLanguage.AUTO
-                                } else {
-                                    TranscriptionLanguage.MALAYALAM
-                                }
-
                                 logd {
                                     "UTTRA LIVE: Starting $selectedLanguage transcription"
                                 }
@@ -189,28 +198,17 @@ class MicrophoneRecordingService : Service() {
                                 loge(e) {
                                     "UTTRA LIVE TRANSCRIPTION EXCEPTION"
                                 }
+                                receiver?.send(RESULT_TRANSCRIPTION_FAILED, null)
+                            } finally {
+                                // Audio is never retained for retries: every new attempt
+                                // records its own .m4a, even after recognition failure.
+                                if (file.exists() && !file.delete()) {
+                                    logw { "Could not delete completed recording: ${file.name}" }
+                                }
                             }
                         }
 
 
-//                        WhisperTestRunner.test(
-//                            applicationContext,
-//                            file
-//                        )
-//                        CoroutineScope(Dispatchers.IO).launch() {
-//                            AndroidAudioDecoder()
-//                                .decodeToPcm16kMono(file)
-//                                .onSuccess { samples ->
-//                                    logd {
-//                                        "Decoder test PASSED: samples=${samples.size}"
-//                                    }
-//                                }
-//                                .onFailure { error ->
-//                                    loge(error) {
-//                                        "Decoder test FAILED"
-//                                    }
-//                                }
-//                        }
 
                     }
                     .onFailure { error ->

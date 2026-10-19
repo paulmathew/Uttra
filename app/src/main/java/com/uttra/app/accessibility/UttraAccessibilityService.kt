@@ -28,7 +28,6 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
     private var activeSessionId: String? = null
     private var pendingTranscriptionSessionId: String? = null
 
-
     private data class EditorTarget(
         val node: AccessibilityNodeInfo,
         val packageName: String,
@@ -175,6 +174,8 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
 
     override fun onDestroy() {
         handler.removeCallbacks(visibilityUpdate)
+        pendingTranscriptionSessionId = null
+        clearEditorSession()
 
         if (::overlayController.isInitialized) {
             overlayController.hide()
@@ -328,146 +329,131 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
             return
         }
 
-        val receiver = object : ResultReceiver(
-            Handler(Looper.getMainLooper())
-        ) {
-            override fun onReceiveResult(
-                resultCode: Int,
-                resultData: Bundle?
-            ) {
-
-                val isTranscriptionResult =
-                    resultCode ==
-                            MicrophoneRecordingService.RESULT_TRANSCRIPTION_READY ||
-                            resultCode ==
-                            MicrophoneRecordingService.RESULT_TRANSCRIPTION_FAILED
-
-                val expectedSessionId = if (isTranscriptionResult) {
-                    pendingTranscriptionSessionId
-                } else {
-                    activeSessionId
-                }
-
-                if (expectedSessionId != sessionId) {
-                    logw {
-                        "Ignoring stale result: code=$resultCode"
-                    }
+        val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
+            override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                val transcriptionResult = resultCode ==
+                        MicrophoneRecordingService.RESULT_TRANSCRIPTION_READY ||
+                        resultCode == MicrophoneRecordingService.RESULT_TRANSCRIPTION_FAILED
+                val expectedId = if (transcriptionResult) pendingTranscriptionSessionId
+                                 else activeSessionId
+                if (expectedId != sessionId) {
+                    logw { "Ignoring stale result: code=$resultCode" }
                     return
                 }
-
                 when (resultCode) {
                     MicrophoneRecordingService.RESULT_STOPPED -> {
                         logd { "Overlay recording STOPPED" }
                         activeSessionId = null
-                        overlayController.onRecordingStopped()
+                        // Original session ownership is established before receiving async results.
                         pendingTranscriptionSessionId = sessionId
-
+                        overlayController.onRecordingStopped()
                     }
-
                     MicrophoneRecordingService.RESULT_FAILED -> {
                         activeSessionId = null
-                        overlayController.onRecordingFailed(
-                            "Failed to stop recording"
-                        )
-                        editorTarget = null
+                        pendingTranscriptionSessionId = null
+                        clearEditorSession()
+                        overlayController.onRecordingFailed("Failed to stop recording")
                     }
-
                     MicrophoneRecordingService.RESULT_TRANSCRIPTION_READY -> {
                         val text = resultData?.getString(
                             MicrophoneRecordingService.EXTRA_TRANSCRIPTION_TEXT
                         )
-
-                        pendingTranscriptionSessionId = null
-
-                        if (!text.isNullOrBlank()) {
-                            logd {
-                                "UTTRA CALLBACK RECEIVED: " +
-                                        "session=$sessionId, text='$text'"
-                            }
-                        } else {
-                            logw {
-                                "UTTRA CALLBACK: Empty transcription"
-                            }
-                        }
-
-                        val capturedTarget = editorTarget
-
-                        val currentEditor = rootInActiveWindow
-                            ?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-
-                        logd {
-                            "UTTRA CURSOR: " +
-                                    "capturedStart=${capturedTarget?.selectionStart}, " +
-                                    "capturedEnd=${capturedTarget?.selectionEnd}, " +
-                                    "currentStart=${currentEditor?.textSelectionStart}, " +
-                                    "currentEnd=${currentEditor?.textSelectionEnd}"
-                        }
-
-                       // overlayController.onProcessingCompleted()
-
-                        val targetMatches = isOriginalEditorStillFocused()
-
-                        logd {
-                            "UTTRA TARGET VALIDATION: " +
-                                    if (targetMatches) "MATCH" else "MISMATCH"
-                        }
-
-
-                        if (targetMatches && !text.isNullOrBlank()) {
-                            logInputConnectionState("TRANSCRIPTION_READY")
-                            //val inserted = insertTranscriptionIntoFocusedEditor(text)
-
-                            val inserted = if (emptyInputSnapshot != null) {
-                                insertIntoEmptyEditorViaInputConnection(text)
-                            } else {
-                                insertTranscriptionIntoFocusedEditor(text)
-                            }
-
-                            if (inserted) {
-                                logd {
-                                    "UTTRA INSERTION PASSED"
-                                }
-                            } else {
-                                logw {
-                                    "UTTRA INSERTION FAILED OR BLOCKED"
-                                }
-                            }
-
-                        } else {
-                            logw {
-                                "UTTRA INSERTION SKIPPED: Invalid target or empty text"
-                            }
-                        }
-
-
-                        editorTarget = null
-                        editorTargetInvalidated = false
-                        emptyInputSnapshot = null
-                        clearEditorSession()
-                        overlayController.onProcessingCompleted()
-
+                        handleTranscriptionReady(sessionId, text)
                     }
-
                     MicrophoneRecordingService.RESULT_TRANSCRIPTION_FAILED -> {
-                        pendingTranscriptionSessionId = null
-
-                        logw {
-                            "UTTRA CALLBACK: Transcription failed"
-                        }
-                        clearEditorSession()
-                        overlayController.onProcessingCompleted()
-                        editorTarget = null
+                        handleTranscriptionFailure(sessionId)
                     }
-
                 }
             }
         }
+        sendRecordingCommand(MicrophoneRecordingService.ACTION_STOP, receiver, sessionId)
+    }
 
-        sendRecordingCommand(
-            MicrophoneRecordingService.ACTION_STOP,
-            receiver,
-            sessionId = sessionId
-        )
+    private fun handleTranscriptionReady(sessionId: String, text: String?) {
+        if (pendingTranscriptionSessionId != sessionId) return
+        pendingTranscriptionSessionId = null
+
+        if (text.isNullOrBlank()) {
+            logw { "UTTRA CALLBACK: Empty transcription; offer fresh recording" }
+            clearEditorSession()
+            overlayController.onTranscriptionFailedRecordAgain()
+            return
+        }
+
+        if (!text.isNullOrBlank()) {
+            logd {
+                "UTTRA CALLBACK RECEIVED: " +
+                        "session=$sessionId, text='$text'"
+            }
+        } else {
+            logw {
+                "UTTRA CALLBACK: Empty transcription"
+            }
+        }
+
+        val capturedTarget = editorTarget
+
+        val currentEditor = rootInActiveWindow
+            ?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+
+        logd {
+            "UTTRA CURSOR: " +
+                    "capturedStart=${capturedTarget?.selectionStart}, " +
+                    "capturedEnd=${capturedTarget?.selectionEnd}, " +
+                    "currentStart=${currentEditor?.textSelectionStart}, " +
+                    "currentEnd=${currentEditor?.textSelectionEnd}"
+        }
+
+        val targetMatches = isOriginalEditorStillFocused()
+
+        logd {
+            "UTTRA TARGET VALIDATION: " +
+                    if (targetMatches) "MATCH" else "MISMATCH"
+        }
+
+
+        if (targetMatches && !text.isNullOrBlank()) {
+            logInputConnectionState("TRANSCRIPTION_READY")
+            //val inserted = insertTranscriptionIntoFocusedEditor(text)
+
+            val inserted = if (emptyInputSnapshot != null) {
+                insertIntoEmptyEditorViaInputConnection(text)
+            } else {
+                insertTranscriptionIntoFocusedEditor(text)
+            }
+
+            if (inserted) {
+                logd {
+                    "UTTRA INSERTION PASSED"
+                }
+            } else {
+                logw {
+                    "UTTRA INSERTION FAILED OR BLOCKED"
+                }
+            }
+
+        } else {
+            logw {
+                "UTTRA INSERTION SKIPPED: Invalid target or empty text"
+            }
+        }
+
+
+        editorTarget = null
+        editorTargetInvalidated = false
+        emptyInputSnapshot = null
+        clearEditorSession()
+        overlayController.onProcessingCompleted()
+    }
+
+    private fun handleTranscriptionFailure(sessionId: String) {
+        if (pendingTranscriptionSessionId != sessionId) return
+        logw { "UTTRA CALLBACK: Transcription failed; offer fresh recording" }
+        pendingTranscriptionSessionId = null
+        // The old editor snapshot must not be used for another recording.
+        // onStartRequested() will capture the current editor afresh.
+        clearEditorSession()
+        overlayController.onTranscriptionFailedRecordAgain()
     }
 
     private fun monitorEditorFocusChange(event: AccessibilityEvent) {

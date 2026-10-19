@@ -8,7 +8,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.WindowManager
-import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -36,6 +35,8 @@ class UttraOverlayController(
     private var editorAvailable = false
     private var startPending = false
     private var completionPending = false
+    // Record Again is a visual substate of Processing; existing OverlayState stays unchanged.
+    private var showingRecordAgain = false
     private val handler = Handler(Looper.getMainLooper())
     private val processingCompletion = Runnable {
         onProcessingCompleted()
@@ -71,6 +72,9 @@ class UttraOverlayController(
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
+
+
+            y = (-80).dp()
         }
 
         try {
@@ -113,6 +117,7 @@ class UttraOverlayController(
         logd { "Overlay: $currentState -> $newState" }
 
         currentState = newState
+        if (newState != OverlayState.Processing) showingRecordAgain = false
         renderState()
     }
 
@@ -159,91 +164,255 @@ class UttraOverlayController(
         when (currentState) {
             OverlayState.Ready -> renderReadyState(container)
             OverlayState.Recording -> renderRecordingState(container)
-            OverlayState.Processing -> renderProcessingState(container)
+            OverlayState.Processing -> {
+                if (showingRecordAgain) renderRecordAgainState(container)
+                else renderProcessingState(container)
+            }
             OverlayState.Hidden -> Unit
         }
     }
 
 
+
     private fun renderReadyState(container: FrameLayout) {
         resizeOverlay(56)
 
-        val microphone = ImageView(context).apply {
-            setImageResource(android.R.drawable.ic_btn_speak_now)
+        val logoButton = ImageView(context).apply {
+
+            setImageResource(
+                com.uttra.app.R.drawable.ic_uttra_mark
+            )
+
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(18, 59, 53))
+            }
+
+            val inset = 7.dp()
+            setPadding(inset, inset, inset, inset)
+
+            contentDescription = "Start Uttra voice dictation"
+
             setOnClickListener {
                 onMicrophoneClicked()
             }
         }
 
         container.addView(
-            microphone,
+            logoButton,
             FrameLayout.LayoutParams(
                 56.dp(),
-                56.dp()
+                56.dp(),
+                Gravity.CENTER
             )
         )
     }
 
 
+
     private fun renderRecordingState(container: FrameLayout) {
-        resizeOverlay(180)
 
-        val row = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
+        resizeOverlay(264)
+
+
+        container.addView(
+            UttraRecordingWaveView(context),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        val cancel = TextView(context).apply {
+            text = "\u00D7"
+            textSize = 27f
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-        }
-
-        val cancel = Button(context).apply {
-            text = "×"
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(205, 33, 80, 72))
+            }
+            contentDescription = "Cancel recording"
             setOnClickListener { onCancelClicked() }
         }
 
-        val waveform = TextView(context).apply {
-            text = "〰"
+        val confirm = TextView(context).apply {
+            text = "\u2713"
+            textSize = 25f
+            setTextColor(Color.rgb(18, 59, 53))
             gravity = Gravity.CENTER
-        }
-
-        val confirm = Button(context).apply {
-            text = "✓"
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(116, 232, 190))
+            }
+            contentDescription = "Finish recording and transcribe"
             setOnClickListener { onConfirmClicked() }
         }
 
-        row.addView(cancel, LinearLayout.LayoutParams(0, 56.dp(), 1f))
-        row.addView(waveform, LinearLayout.LayoutParams(0, 56.dp(), 1f))
-        row.addView(confirm, LinearLayout.LayoutParams(0, 56.dp(), 1f))
-
         container.addView(
-            row,
+            cancel,
             FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                56.dp()
-            )
+                44.dp(),
+                44.dp(),
+                Gravity.START or Gravity.CENTER_VERTICAL
+            ).apply { leftMargin = 6.dp() }
+        )
+        container.addView(
+            confirm,
+            FrameLayout.LayoutParams(
+                44.dp(),
+                44.dp(),
+                Gravity.END or Gravity.CENTER_VERTICAL
+            ).apply { rightMargin = 6.dp() }
         )
     }
 
 
     private fun renderProcessingState(container: FrameLayout) {
-        resizeOverlay(100)
+        // Visual change only. The service still owns transcription state and timing.
+        resizeOverlay(216)
 
-        val label = TextView(context).apply {
-            text = "Processing..."
+        val pill = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            textSize = 12f
+            setPadding(16.dp(), 0, 16.dp(), 0)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 28.dp().toFloat()
+                setColor(Color.rgb(18, 59, 53))
+            }
+            contentDescription = "Uttra is transcribing"
         }
 
-        container.addView(
+        val dots = UttraProcessingDotsView(context)
+        pill.addView(
+            dots,
+            LinearLayout.LayoutParams(44.dp(), 28.dp())
+        )
+
+        val label = TextView(context).apply {
+            text = "Transcribing\u2026"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER_VERTICAL
+            includeFontPadding = false
+            setPadding(8.dp(), 0, 0, 0)
+        }
+        pill.addView(
             label,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        container.addView(
+            pill,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                56.dp()
+                FrameLayout.LayoutParams.MATCH_PARENT
             )
         )
     }
 
 
+    /** Failed recognition: offer a fresh recording, never reprocess old audio. */
+    fun onTranscriptionFailedRecordAgain() {
+        if (currentState != OverlayState.Processing) return
+        if (!editorAvailable) {
+            onProcessingCompleted()
+            return
+        }
+        showingRecordAgain = true
+        renderState()
+    }
+
+    private fun onRecordAgainTapped() {
+        if (currentState != OverlayState.Processing || !showingRecordAgain) return
+        showingRecordAgain = false
+        updateState(OverlayState.Ready)
+        // Calls the existing safe start path, which captures a fresh editor target
+        // and asks MicrophoneRecordingService to record into a new file/session.
+        if (editorAvailable) {
+            onMicrophoneClicked()
+        } else {
+            onEditorAvailabilityChanged(false)
+        }
+    }
+
+    private fun onDismissRecordAgainTapped() {
+        if (currentState != OverlayState.Processing || !showingRecordAgain) return
+        showingRecordAgain = false
+        onProcessingCompleted()
+    }
+
+    private fun renderRecordAgainState(container: FrameLayout) {
+        resizeOverlay(336)
+
+        val pill = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(12.dp(), 0, 6.dp(), 0)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 28.dp().toFloat()
+                setColor(Color.rgb(18, 59, 53))
+            }
+        }
+
+        val title = TextView(context).apply {
+            text = "Couldn't transcribe"
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER_VERTICAL
+            includeFontPadding = false
+            maxLines = 1
+        }
+        pill.addView(title, LinearLayout.LayoutParams(0, 56.dp(), 1f))
+
+        val recordAgain = TextView(context).apply {
+            text = "↻ Record again"
+            textSize = 13f
+            setTextColor(Color.rgb(18, 59, 53))
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 20.dp().toFloat()
+                setColor(Color.rgb(116, 232, 190))
+            }
+            contentDescription = "Discard failed recording and record a new one"
+            setOnClickListener { onRecordAgainTapped() }
+        }
+        pill.addView(recordAgain, LinearLayout.LayoutParams(116.dp(), 42.dp()).apply {
+            marginStart = 6.dp()
+        })
+
+        val close = TextView(context).apply {
+            text = "×"
+            textSize = 25f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            contentDescription = "Dismiss transcription failure"
+            setOnClickListener { onDismissRecordAgainTapped() }
+        }
+        pill.addView(close, LinearLayout.LayoutParams(44.dp(), 44.dp()))
+
+        container.addView(pill, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+    }
+
     fun onProcessingCompleted() {
         if (currentState != OverlayState.Processing) return
 
+        showingRecordAgain = false
         updateState(OverlayState.Ready)
         onEditorAvailabilityChanged(editorAvailable)
 
@@ -277,8 +446,8 @@ class UttraOverlayController(
 
             OverlayState.Recording,
             OverlayState.Processing -> {
-                // Keep the controls visible for now.
-                // Track editor availability separately.
+                // A fresh recording needs a visible editor; close the prompt otherwise.
+                if (!available && showingRecordAgain) onDismissRecordAgainTapped()
             }
         }
     }

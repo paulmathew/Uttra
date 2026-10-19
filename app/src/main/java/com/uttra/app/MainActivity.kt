@@ -35,6 +35,8 @@ import com.uttra.app.transcription.IndicMalayalamTranscriber
 import java.io.File
 import com.uttra.app.transcription.UttraSpeechTranscriber
 
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
 class MainActivity : ComponentActivity() {
 
     private val microphonePermissionLauncher =
@@ -81,12 +83,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private var showHomeScreen by mutableStateOf(false)
+    private var hasCompletedOnboarding by mutableStateOf(false)
+
+    private val onboardingPreferences by lazy {
+        getPreferences(MODE_PRIVATE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
 
 
+        hasCompletedOnboarding = onboardingPreferences.getBoolean(
+            "onboarding_completed",
+            false
+        )
 
 
         // TEMPORARY: Debug-only automatic language detection benchmark.
@@ -141,7 +153,7 @@ class MainActivity : ComponentActivity() {
 
                 val status by permissionViewModel.permissionStatus
                     .collectAsStateWithLifecycle()
-                if (!status.canUseVoiceInput || !showHomeScreen) {
+                if (!status.canUseVoiceInput || !hasCompletedOnboarding) {
                     PermissionScreen(
                         status = status,
                         onEnableAccessibility = {
@@ -165,9 +177,12 @@ class MainActivity : ComponentActivity() {
                         },
                         onContinue = {
                             if (status.canUseVoiceInput) {
-                                showHomeScreen = true
+                                onboardingPreferences.edit()
+                                    .putBoolean("onboarding_completed", true)
+                                    .apply()
+
+                                hasCompletedOnboarding = true
                             }
-                            // Navigate to Uttra Home later
                         }
                     )
                 } else {

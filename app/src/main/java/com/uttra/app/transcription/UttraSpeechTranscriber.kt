@@ -23,8 +23,7 @@ internal class UttraSpeechTranscriber(
         language: TranscriptionLanguage
     ): Result<String> {
 
-        return when (language) {
-
+        val transcriptionResult = when (language) {
             TranscriptionLanguage.ENGLISH -> {
                 englishTranscriber.transcribe(
                     audioFile,
@@ -80,6 +79,9 @@ internal class UttraSpeechTranscriber(
                 }
             }
 
+        }
+        return transcriptionResult.map { text ->
+            TranscriptionTextFormatter.format(text)
         }
     }
 }
