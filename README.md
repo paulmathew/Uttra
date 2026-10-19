@@ -377,3 +377,6 @@ Do not test message insertion by automatically sending messages; confirm the tex
 - End-to-end setup on a separate fresh laptop
 - Full Malayalam model provisioning into a fresh app installation
 - Production model delivery and installation
+
+
+![Badge](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fpaulmathew%2FUttra&label=&icon=github&color=%23198754&message=&style=flat&tz=UTC)
