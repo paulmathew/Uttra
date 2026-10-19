@@ -187,7 +187,7 @@ class UttraOverlayController(
 
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(18, 59, 53))
+                setColor(Color.argb(194,18, 59, 53))
             }
 
             val inset = 7.dp()
