@@ -38,8 +38,15 @@ Uttra explores a focused question: **Can native Android dictation work across ot
 
 
 ## 📱 Uttra in action
+### 🎬 Watch the offline demo
+
+[![Watch Uttra Offline Demo](docs/assets/screenshots/06-english-malayalam.png)](YOUR_VIDEO_URL)
+
+▶ **[Watch the 62-second offline demo](https://drive.google.com/file/d/1YYXVFZLFTLZ1IvxuGwhyO-xscmfLVdzm/view?usp=sharing)**
 
 Real Pixel 7a screen captures from a single development walkthrough. The English and Malayalam examples were dictated in **two separate recordings**, not automatically switched within one utterance.
+### Screenshots
+
 
 <p align="center">
   <img src="docs/assets/screenshots/01-setup.png" alt="Uttra initial permission setup" width="150" />
@@ -50,6 +57,32 @@ Real Pixel 7a screen captures from a single development walkthrough. The English
 </p>
 
 <p align="center"><sub>Permission setup · Home · Recording · Transcribing · Cross-app text insertion</sub></p>
+
+
+## ⚡ Engineering at a Glance
+
+Uttra is an independent native Android experiment exploring
+fully offline, cross-application voice dictation.
+
+- **Android platform:** Kotlin, Jetpack Compose,
+  Accessibility Services, foreground microphone recording,
+  editor/session validation, and cursor-safe text insertion.
+
+- **On-device ASR:** Whisper Tiny through C++/JNI for English;
+  IndicConformer INT8 through sherpa-onnx for Malayalam.
+
+- **Reliability engineering:** RMS/peak analysis, experimental
+  language detection, transcription validation, stale-editor
+  protection, and recoverable failure handling.
+
+- **Measured experiments:** Six selected single-language
+  recordings successfully routed and inserted. Additional
+  benchmarks document latency, ambiguous language detection,
+  and mixed-language recognition failures.
+
+**Current status:** English and Malayalam work in demonstrated
+separate recordings. Automatic code-switching remains research.
+
 
 ## 🧰 Requirements
 
