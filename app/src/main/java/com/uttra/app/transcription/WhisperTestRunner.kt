@@ -2,6 +2,8 @@ package com.uttra.app.transcription
 
 import android.content.Context
 import android.os.SystemClock
+import android.util.Log
+import kotlinx.coroutines.CancellationException
 import com.uttra.app.core.logging.logd
 import com.uttra.app.core.logging.loge
 import kotlinx.coroutines.CoroutineScope
@@ -414,5 +416,190 @@ internal object WhisperTestRunner {
             }
         }
     }
+
+
+    // Milestone 7.8B: diagnostic-only comparison of the two manually cut audio segments.
+    // Fixed app-private filenames; no overlay, microphone or editor access.
+    fun compareMixedSegments(context: Context) {
+        val appContext = context.applicationContext
+
+        scope.launch {
+            val benchmarkDir = File(appContext.filesDir, "speech_benchmarks")
+            val englishFile = File(benchmarkDir, "english_segment.m4a")
+            val malayalamFile = File(benchmarkDir, "malayalam_segment.m4a")
+            val reportFile = File(benchmarkDir, "mixed_7_8b_results.txt")
+
+            try {
+                check(englishFile.isFile && englishFile.length() > 0L) {
+                    "Missing English segment: ${englishFile.absolutePath}"
+                }
+                check(malayalamFile.isFile && malayalamFile.length() > 0L) {
+                    "Missing Malayalam segment: ${malayalamFile.absolutePath}"
+                }
+
+                Log.i(MIXED_BENCH_TAG, "MIXED 7.8B START: englishBytes=${englishFile.length()}, malayalamBytes=${malayalamFile.length()}")
+
+                // Run sequentially to avoid overlapping model inference/memory use.
+                val english = runMixedSegment("WHISPER_ENGLISH") {
+                    WhisperNativeTranscriber(appContext).transcribe(
+                        englishFile, TranscriptionLanguage.ENGLISH
+                    )
+                }
+                val malayalam = runMixedSegment("INDIC_MALAYALAM") {
+                    IndicMalayalamTranscriber(appContext).transcribe(
+                        malayalamFile, TranscriptionLanguage.MALAYALAM
+                    )
+                }
+
+                // This is deliberately simple concatenation, not automatic
+                // overlap correction or language-switch detection.
+                val combined = if (english.text != null && malayalam.text != null) {
+                    english.text + " " + malayalam.text
+                } else {
+                    "UNAVAILABLE — one or both segments failed"
+                }
+
+                val report = listOf(
+                    "Uttra 7.8B manual segmentation benchmark",
+                    "Reference: This is going to be a mixed recording, ഞാൻ അങ്ങനെ നോക്കാം",
+                    "English segment: ${englishFile.name} (${englishFile.length()} bytes)",
+                    "Malayalam segment: ${malayalamFile.name} (${malayalamFile.length()} bytes)",
+                    english.summary,
+                    malayalam.summary,
+                    "COMBINED (no deduplication or editing): $combined"
+                ).joinToString("\n", postfix = "\n")
+
+                reportFile.writeText(report, Charsets.UTF_8)
+                Log.i(MIXED_BENCH_TAG, "MIXED 7.8B COMBINED: $combined")
+                Log.i(MIXED_BENCH_TAG, "MIXED 7.8B REPORT SAVED: ${reportFile.absolutePath}")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.e(MIXED_BENCH_TAG, "MIXED 7.8B FAILED", error)
+                // Preserve an error report too, if private storage is writable.
+                try {
+                    benchmarkDir.mkdirs()
+                    reportFile.writeText(
+                        "Uttra 7.8B benchmark failed: ${error.stackTraceToString()}\n",
+                        Charsets.UTF_8
+                    )
+                } catch (_: Exception) {
+                    // Original failure is already logged.
+                }
+            }
+        }
+    }
+
+    // Milestone 7.8C: compare full-recording Whisper English with the
+    // 7.8B manually cut English and Malayalam segments. No text insertion.
+    fun compareWholeVsSegments(context: Context) {
+        val appContext = context.applicationContext
+        scope.launch {
+            val dir = File(appContext.filesDir, "speech_benchmarks")
+            val full = File(dir, "mixed_01.m4a")
+            val english = File(dir, "english_segment.m4a")
+            val malayalam = File(dir, "malayalam_segment.m4a")
+            val reportFile = File(dir, "mixed_7_8c_results.txt")
+
+            try {
+                for (recording in listOf(full, english, malayalam)) {
+                    check(recording.isFile && recording.length() > 0L) {
+                        "Missing or empty benchmark recording: ${recording.absolutePath}"
+                    }
+                }
+
+                Log.i(MIXED_BENCH_TAG, "MIXED 7.8C START: fullBytes=${full.length()}, " +
+                    "englishBytes=${english.length()}, malayalamBytes=${malayalam.length()}")
+
+                // Sequential inference limits simultaneous native model memory use.
+                val fullEnglish = runMixedSegment("WHISPER_ENGLISH_FULL", "7.8C") {
+                    WhisperNativeTranscriber(appContext).transcribe(
+                        full, TranscriptionLanguage.ENGLISH
+                    )
+                }
+                val splitEnglish = runMixedSegment("WHISPER_ENGLISH_SEGMENT", "7.8C") {
+                    WhisperNativeTranscriber(appContext).transcribe(
+                        english, TranscriptionLanguage.ENGLISH
+                    )
+                }
+                val splitMalayalam = runMixedSegment("INDIC_MALAYALAM_SEGMENT", "7.8C") {
+                    IndicMalayalamTranscriber(appContext).transcribe(
+                        malayalam, TranscriptionLanguage.MALAYALAM
+                    )
+                }
+
+                // Do NOT concatenate whole-English output with Malayalam:
+                // Whisper may hallucinate English words for the Malayalam tail.
+                val report = listOf(
+                    "Uttra 7.8C whole-versus-segmented benchmark",
+                    "Reference: This is going to be a mixed recording, ഞാൻ അങ്ങനെ നോക്കാം",
+                    "Full recording: ${full.name} (${full.length()} bytes)",
+                    "English segment: ${english.name} (${english.length()} bytes)",
+                    "Malayalam segment: ${malayalam.name} (${malayalam.length()} bytes)",
+                    fullEnglish.summary,
+                    splitEnglish.summary,
+                    splitMalayalam.summary,
+                    "NOTE: Manual comparison only; no automatic text merge or insertion."
+                ).joinToString("\n", postfix = "\n")
+
+                reportFile.writeText(report, Charsets.UTF_8)
+                Log.i(MIXED_BENCH_TAG, "MIXED 7.8C REPORT SAVED: ${reportFile.absolutePath}")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.e(MIXED_BENCH_TAG, "MIXED 7.8C ERROR", error)
+                try {
+                    dir.mkdirs()
+                    reportFile.writeText(
+                        "Uttra 7.8C benchmark failed: ${error.stackTraceToString()}\n",
+                        Charsets.UTF_8
+                    )
+                } catch (_: Exception) {
+                    // The error is already in Logcat.
+                }
+            }
+        }
+    }
+
+    private data class MixedSegmentOutcome(
+        val text: String?,
+        val summary: String
+    )
+
+    private suspend fun runMixedSegment(
+        engine: String,
+        phase: String = "7.8B",
+        operation: suspend () -> Result<String>
+    ): MixedSegmentOutcome {
+        val startedAt = SystemClock.elapsedRealtime()
+        val result: Result<String> = try {
+            operation()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(error)
+        }
+        val elapsedMs = SystemClock.elapsedRealtime() - startedAt
+
+        return result.fold(
+            onSuccess = { text ->
+                val cleanedText = text.trim()
+                val line = if (cleanedText.isEmpty()) {
+                    "MIXED $phase RESULT: engine=$engine, elapsedMs=$elapsedMs, EMPTY OUTPUT"
+                } else {
+                    "MIXED $phase RESULT: engine=$engine, elapsedMs=$elapsedMs, text='$cleanedText'"
+                }
+                Log.i(MIXED_BENCH_TAG, line)
+                MixedSegmentOutcome(cleanedText.ifEmpty { null }, line)
+            },
+            onFailure = { error ->
+                val line = "MIXED $phase FAILED: engine=$engine, elapsedMs=$elapsedMs, reason=${error.message}"
+                Log.e(MIXED_BENCH_TAG, line, error)
+                MixedSegmentOutcome(null, line)
+            }
+        )
+    }
+
+    private const val MIXED_BENCH_TAG = "UttraMixedBench"
 
 }

@@ -143,6 +143,26 @@ class MainActivity : ComponentActivity() {
 
 
 
+        // Milestone 7.8B: debug-only, read-only mixed-language segment benchmark.
+        // This does not use instrumentation tests or the editor insertion path.
+        if (
+            BuildConfig.DEBUG &&
+            intent?.action == "com.uttra.app.action.DEBUG_MIXED_SEGMENTS"
+        ) {
+            logd { "MIXED 7.8B: Starting split-audio benchmark" }
+            WhisperTestRunner.compareMixedSegments(applicationContext)
+        }
+
+        // Milestone 7.8C: compare forced-English Whisper on full vs split audio.
+        // Diagnostic only: no overlay, no editor insertion, no instrumentation test.
+        if (
+            BuildConfig.DEBUG &&
+            intent?.action == "com.uttra.app.action.DEBUG_MIXED_WHOLE_VS_SEGMENTS"
+        ) {
+            logd { "MIXED 7.8C: Starting whole-vs-segments benchmark" }
+            WhisperTestRunner.compareWholeVsSegments(applicationContext)
+        }
+
         enableEdgeToEdge()
         WindowInsetsControllerCompat(
             window,

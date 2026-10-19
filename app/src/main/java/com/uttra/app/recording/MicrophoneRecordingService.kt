@@ -158,7 +158,37 @@ class MicrophoneRecordingService : Service() {
                             "Recording saved: ${file.absolutePath}, " +
                                     "size=${file.length()} bytes"
                         }
+// Temporary diagnostic: preserve mixed-language audio for 7.8A.
+                        if (BuildConfig.DEBUG) {
+                            try {
+                                val benchmarkFile = java.io.File(
+                                    filesDir,
+                                    "speech_benchmarks/mixed_01.m4a"
+                                )
 
+                                check(
+                                    benchmarkFile.parentFile?.isDirectory == true ||
+                                            benchmarkFile.parentFile?.mkdirs() == true
+                                ) {
+                                    "Could not create benchmark directory"
+                                }
+
+                                file.copyTo(
+                                    target = benchmarkFile,
+                                    overwrite = true
+                                )
+
+                                logd {
+                                    "MIXED BENCH SAVED: ${benchmarkFile.absolutePath}, " +
+                                            "size=${benchmarkFile.length()}"
+                                }
+
+                            } catch (error: Exception) {
+                                loge(error) {
+                                    "MIXED BENCH SAVE FAILED"
+                                }
+                            }
+                        }
                         val appContext = applicationContext
 
                         transcriptionScope.launch {
