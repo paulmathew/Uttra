@@ -35,6 +35,8 @@ import com.uttra.app.transcription.IndicMalayalamTranscriber
 import java.io.File
 import com.uttra.app.transcription.UttraSpeechTranscriber
 
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
 class MainActivity : ComponentActivity() {
 
     private val microphonePermissionLauncher =
@@ -81,50 +83,62 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private var showHomeScreen by mutableStateOf(false)
+    private var hasCompletedOnboarding by mutableStateOf(false)
+
+    private val onboardingPreferences by lazy {
+        getPreferences(MODE_PRIVATE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
 
-// TEMPORARY: Replay our saved Malayalam recording.
+
+        hasCompletedOnboarding = onboardingPreferences.getBoolean(
+            "onboarding_completed",
+            false
+        )
 
 
-//        if (BuildConfig.DEBUG) {
-//            lifecycleScope.launch(Dispatchers.IO) {
-//
-//                val benchmarkFile = File(
-//                    applicationContext.filesDir,
-//                    "speech_benchmarks/english_01.m4a"
-//                )
-//
-//
-//                val result = UttraSpeechTranscriber(
-//                    applicationContext
-//                ).transcribe(
-//                    audioFile = benchmarkFile,
-//                    language = TranscriptionLanguage.ENGLISH
-//                )
-//
-//
-//                result
-//                    .onSuccess { text ->
-//                        logd {
-//                            "INDIC INTEGRATION PASSED: text='$text'"
-//                        }
-//                    }
-//                    .onFailure { error ->
-//                        loge(error) {
-//                            "INDIC INTEGRATION FAILED"
-//                        }
-//                    }
-//            }
-//        }
-//
-//        WhisperTestRunner.replayBenchmark(
-//            context = applicationContext,
-//            fileName = "mixed_01.m4a",
-//            language = TranscriptionLanguage.AUTO
-//        )
+        // TEMPORARY: Debug-only automatic language detection benchmark.
+        if (
+            BuildConfig.DEBUG &&
+            intent?.action == "com.uttra.app.action.DEBUG_LANGUAGE_DETECTION"
+        ) {
+            val benchmarkName =
+                intent?.getStringExtra("benchmark_file")
+
+            when (benchmarkName) {
+                "english_01.m4a",
+                "english_02.m4a",
+                "english_03.m4a",
+                "malayalam_01.m4a",
+                "malayalam_02.m4a",
+                "malayalam_03.m4a",
+                "quiet_malayalam_01.m4a",
+                "quiet_english_01.m4a",
+                "live_ml_failed_03.m4a",
+                "live_auto_rejected_04.m4a",
+                "silence_01.m4a" -> {
+                    logd {
+                        "LANGUAGE DETECTION TRIGGER: $benchmarkName"
+                    }
+
+                    WhisperTestRunner.detectBenchmark(
+                        context = applicationContext,
+                        fileName = benchmarkName
+                    )
+                }
+
+                else -> {
+                    logw {
+                        "LANGUAGE DETECTION: Invalid benchmark: $benchmarkName"
+                    }
+                }
+            }
+        }
+
 
 
 
@@ -139,7 +153,7 @@ class MainActivity : ComponentActivity() {
 
                 val status by permissionViewModel.permissionStatus
                     .collectAsStateWithLifecycle()
-                if (!status.canUseVoiceInput || !showHomeScreen) {
+                if (!status.canUseVoiceInput || !hasCompletedOnboarding) {
                     PermissionScreen(
                         status = status,
                         onEnableAccessibility = {
@@ -163,9 +177,12 @@ class MainActivity : ComponentActivity() {
                         },
                         onContinue = {
                             if (status.canUseVoiceInput) {
-                                showHomeScreen = true
+                                onboardingPreferences.edit()
+                                    .putBoolean("onboarding_completed", true)
+                                    .apply()
+
+                                hasCompletedOnboarding = true
                             }
-                            // Navigate to Uttra Home later
                         }
                     )
                 } else {

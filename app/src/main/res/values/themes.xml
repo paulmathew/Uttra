@@ -2,4 +2,23 @@
 <resources>
 
     <style name="Theme.Uttra" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Branded launch theme -->
+    <style
+        name="Theme.Uttra.Splash"
+        parent="Theme.SplashScreen">
+
+        <item name="windowSplashScreenBackground">
+            @color/uttra_brand_dark
+        </item>
+
+        <item name="windowSplashScreenAnimatedIcon">
+            @drawable/ic_uttra_splash_logo
+        </item>
+
+        <item name="postSplashScreenTheme">
+            @style/Theme.Uttra
+        </item>
+
+    </style>
 </resources>

@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="uttra_primary">#183F39</color>
+    <color name="uttra_mint">#74E8BE</color>
+    <color name="uttra_splash_background">#123B35</color>
+    <color name="uttra_icon_background">#123B35</color>
 </resources>

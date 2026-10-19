@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="uttra_brand_dark">#103A35</color>
+    <color name="uttra_brand_darkest">#10252B</color>
+    <color name="uttra_brand_forest">#184941</color>
+    <color name="uttra_brand_mint">#79E5C5</color>
+    <color name="uttra_brand_soft_mint">#B9EDCF</color>
+    <color name="uttra_brand_aqua">#10B4AF</color>
+    <color name="uttra_brand_surface">#F5F8F7</color>
+</resources>

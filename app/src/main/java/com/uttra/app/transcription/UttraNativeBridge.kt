@@ -27,4 +27,9 @@ object UttraNativeBridge {
         languageCode: String?
     ): String
 
+    external fun nativeDetectLanguage(
+        contextHandle: Long,
+        audioSamples: FloatArray
+    ): FloatArray
+
 }
