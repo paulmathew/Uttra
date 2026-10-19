@@ -396,10 +396,15 @@ private enum class DemoMenuPage(
     ),
     BETA(
         "Beta limitations",
-        "Automatic English and Malayalam language detection " +
-                "is experimental and may occasionally select " +
-                "the wrong language.\n\n" +
-                "Speech recognition runs on your device."
+        "Uttra currently supports English and Malayalam " +
+                "speech recognition in separate recordings.\n\n" +
+                "Automatic language detection is experimental. " +
+                "Short or ambiguous recordings may not always " +
+                "be recognized correctly.\n\n" +
+                "Mixed English–Malayalam speech within a single " +
+                "recording is not yet reliably supported.\n\n" +
+                "Speech recognition runs locally on your device " +
+                "after the models are installed."
     )
 }
 
