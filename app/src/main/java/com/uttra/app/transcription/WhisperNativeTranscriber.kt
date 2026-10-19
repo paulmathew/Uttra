@@ -62,7 +62,17 @@ class WhisperNativeTranscriber(
                     "WHISPER STEP 5: Inference completed"
                 }
 
-                Result.success(recognizedText.trim())
+                val cleanedText = TranscriptionTextFormatter
+                    .removeRecognitionMarkers(recognizedText)
+
+                if (cleanedText.none { it.isLetterOrDigit() }) {
+                    // No usable speech: surface the existing Record Again UI.
+                    Result.failure(
+                        IllegalStateException("No recognizable speech detected")
+                    )
+                } else {
+                    Result.success(cleanedText)
+                }
 
             } finally {
                 logd { "WHISPER STEP 6: Freeing native context" }
