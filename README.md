@@ -40,7 +40,7 @@ Uttra explores a focused question: **Can native Android dictation work across ot
 ## 📱 Uttra in action
 ### 🎬 Watch the offline demo
 
-[![Watch Uttra Offline Demo](ddocs/assets/screenshots/02-home.png)](https://drive.google.com/file/d/1YYXVFZLFTLZ1IvxuGwhyO-xscmfLVdzm/view?usp=sharing)
+[![Watch Uttra Offline Demo](docs/assets/screenshots/02-home.png)](https://drive.google.com/file/d/1YYXVFZLFTLZ1IvxuGwhyO-xscmfLVdzm/view?usp=sharing)
 
 ▶ **[Watch the 62-second offline demo](https://drive.google.com/file/d/1YYXVFZLFTLZ1IvxuGwhyO-xscmfLVdzm/view?usp=sharing)**
 
