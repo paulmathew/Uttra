@@ -1,19 +1,19 @@
 <div align="center">
   <img src="app/src/main/res/drawable-nodpi/uttra_wordmark.png" alt="Uttra (ഉത്ര) wordmark" width="360" />
 
-# Uttra (ഉത്ര)
+  # Uttra (ഉത്ര)
 
-**Your voice. Your words. Anywhere.**
+  **Your voice. Your words. Anywhere.**
 
-*Fully offline, native Android cross-app dictation — an independent English/Malayalam engineering prototype.*
+  *Fully offline, native Android cross-app dictation — an independent English/Malayalam engineering prototype.*
 
-![Android](https://img.shields.io/badge/Android-Native-3DDC84?style=for-the-badge&logo=android&logoColor=white)
-![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
-![On-device](https://img.shields.io/badge/ASR-On--Device-0E8A6A?style=for-the-badge)
-![Languages](https://img.shields.io/badge/Languages-English%20%7C%20Malayalam-1C88A0?style=for-the-badge)
-![Stage](https://img.shields.io/badge/Status-Experimental%20Beta-D19A30?style=for-the-badge)
+  ![Android](https://img.shields.io/badge/Android-Native-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+  ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+  ![On-device](https://img.shields.io/badge/ASR-On--Device-0E8A6A?style=for-the-badge)
+  ![Languages](https://img.shields.io/badge/Languages-English%20%7C%20Malayalam-1C88A0?style=for-the-badge)
+  ![Stage](https://img.shields.io/badge/Status-Experimental%20Beta-D19A30?style=for-the-badge)
 
-<sub>Built and tested primarily on a Pixel 7a · Engineering evidence snapshot: 19 October 2026</sub>
+  <sub>Built and tested primarily on a Pixel 7a · Engineering evidence snapshot: 19 October 2026</sub>
 </div>
 
 ---
@@ -35,6 +35,21 @@ Uttra explores a focused question: **Can native Android dictation work across ot
 | **Language handling** | Experimental whole-recording English/Malayalam AUTO router in **debug builds**, with score-based rejection |
 
 > **Beta status:** English and Malayalam have been demonstrated in **separate recordings**. Automatic switching *within the same recording* is **not reliably supported**. The language chips on the home screen indicate supported languages; they are **not selectors**. The current non-debug recording path defaults to Malayalam and is not yet equivalent to the debug AUTO experience.
+
+
+## 📱 Uttra in action
+
+Real Pixel 7a screen captures from a single development walkthrough. The English and Malayalam examples were dictated in **two separate recordings**, not automatically switched within one utterance.
+
+<p align="center">
+  <img src="docs/assets/screenshots/01-setup.png" alt="Uttra initial permission setup" width="150" />
+  <img src="docs/assets/screenshots/02-home.png" alt="Uttra home screen showing support for English and Malayalam" width="150" />
+  <img src="docs/assets/screenshots/03-recording.png" alt="Uttra recording waveform over another Android app" width="150" />
+  <img src="docs/assets/screenshots/04-processing.png" alt="Uttra processing transcription overlay" width="150" />
+  <img src="docs/assets/screenshots/06-english-malayalam.png" alt="English and Malayalam output inserted in an external text editor" width="150" />
+</p>
+
+<p align="center"><sub>Permission setup · Home · Recording · Transcribing · Cross-app text insertion</sub></p>
 
 ## 🧰 Requirements
 
@@ -173,6 +188,12 @@ A single **87,952-byte AAC/M4A mixed recording** was passed through four configu
 | IndicConformer Malayalam | **2,610 ms** | `തീസ് ഈസ് ഗോയിങ് ടു ബീ അ മിക്സഡ് റെക്കോഡിംങ്് ഞാന് അങ്ങനെ നോക്കാം` |
 
 The forced-English path handled the English opening but treated Malayalam as English; IndicConformer mostly recovered the Malayalam ending while transliterating English into Malayalam characters. Whisper AUTO produced an unrelated hallucination in this one test. **No recognizer produced the intended mixed-script sentence end to end.**
+
+
+<p align="center">
+  <img src="docs/assets/benchmarks/mixed-language-recognition.svg" alt="Single-run recognition path timing chart on one mixed English-Malayalam recording; Whisper AUTO 22.881 seconds, forced English 4.385 seconds, forced Malayalam 9.235 seconds, and IndicConformer 2.610 seconds. None produced fully correct bilingual text." width="100%" />
+</p>
+
 
 ### 7. Mixed-language benchmark 7.8B — three manual segmentation attempts
 
