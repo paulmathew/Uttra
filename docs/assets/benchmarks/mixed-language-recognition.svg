@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="465" viewBox="0 0 1100 465" role="img" aria-labelledby="title desc">
+<title id="title">Uttra mixed-utterance recognition experiment</title>
+<desc id="desc">One mixed English-Malayalam audio recording. Single-run elapsed method times: Whisper AUTO 22.881 seconds, Whisper English 4.385, Whisper Malayalam 9.235, and IndicConformer Malayalam 2.610 seconds. Accuracy is not comparable and no engine succeeded at mixed transcription.</desc>
+<rect width="1100" height="465" rx="22" fill="#f5fbf8"/>
+<text x="45" y="56" fill="#123c34" font-family="Arial, sans-serif" font-size="28" font-weight="bold">Same recording. Four recognition paths.</text>
+<text x="45" y="83" fill="#51756e" font-family="Arial, sans-serif" font-size="16">Pixel 7a · 7.8A · single-run method time · lower time does not mean correct output</text>
+
+<line x1="293.0" y1="115" x2="293.0" y2="377" stroke="#d6e7e0" stroke-width="1"/>
+<text x="293.0" y="401" fill="#66827a" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">0s</text>
+<line x1="433.8" y1="115" x2="433.8" y2="377" stroke="#d6e7e0" stroke-width="1"/>
+<text x="433.8" y="401" fill="#66827a" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">5s</text>
+<line x1="574.6" y1="115" x2="574.6" y2="377" stroke="#d6e7e0" stroke-width="1"/>
+<text x="574.6" y="401" fill="#66827a" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">10s</text>
+<line x1="715.4" y1="115" x2="715.4" y2="377" stroke="#d6e7e0" stroke-width="1"/>
+<text x="715.4" y="401" fill="#66827a" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">15s</text>
+<line x1="856.2" y1="115" x2="856.2" y2="377" stroke="#d6e7e0" stroke-width="1"/>
+<text x="856.2" y="401" fill="#66827a" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">20s</text>
+<line x1="997.0" y1="115" x2="997.0" y2="377" stroke="#d6e7e0" stroke-width="1"/>
+<text x="997.0" y="401" fill="#66827a" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">25s</text>
+<text x="45" y="142" fill="#123c34" font-family="Arial, sans-serif" font-size="18" font-weight="600">Whisper AUTO</text>
+<rect x="293" y="122" width="644.3" height="32" rx="7" fill="#D28C43"/>
+<text x="946.3" y="145" fill="#123c34" font-family="Arial, sans-serif" font-size="17" font-weight="bold">22.881s</text>
+<text x="45" y="164" fill="#627c76" font-family="Arial, sans-serif" font-size="13">Japanese hallucination</text>
+<text x="45" y="210" fill="#123c34" font-family="Arial, sans-serif" font-size="18" font-weight="600">Whisper · forced EN</text>
+<rect x="293" y="190" width="123.5" height="32" rx="7" fill="#1B876C"/>
+<text x="425.5" y="213" fill="#123c34" font-family="Arial, sans-serif" font-size="17" font-weight="bold">4.385s</text>
+<text x="45" y="232" fill="#627c76" font-family="Arial, sans-serif" font-size="13">Mixed-language words incorrect</text>
+<text x="45" y="278" fill="#123c34" font-family="Arial, sans-serif" font-size="18" font-weight="600">Whisper · forced ML</text>
+<rect x="293" y="258" width="260.1" height="32" rx="7" fill="#3B92A2"/>
+<text x="562.1" y="281" fill="#123c34" font-family="Arial, sans-serif" font-size="17" font-weight="bold">9.235s</text>
+<text x="45" y="300" fill="#627c76" font-family="Arial, sans-serif" font-size="13">Mixed-language words incorrect</text>
+<text x="45" y="346" fill="#123c34" font-family="Arial, sans-serif" font-size="18" font-weight="600">IndicConformer · ML</text>
+<rect x="293" y="326" width="73.5" height="32" rx="7" fill="#6BAF89"/>
+<text x="375.5" y="349" fill="#123c34" font-family="Arial, sans-serif" font-size="17" font-weight="bold">2.610s</text>
+<text x="45" y="368" fill="#627c76" font-family="Arial, sans-serif" font-size="13">English transliterated</text>
+<text x="45" y="441" fill="#4b7168" font-family="Arial, sans-serif" font-size="15">No recognizer produced correct mixed-script output. Not p50/p95, WER, or end-to-end latency.</text>
+</svg>
