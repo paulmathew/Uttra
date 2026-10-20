@@ -193,6 +193,24 @@ The English relaxation was motivated by an actual 2.276-second English recording
 
 **Why two ASR engines?** They fail differently on mixed speech: forced-English Whisper can reproduce an English opening but substitute incorrect English for Malayalam; IndicConformer can recover Malayalam while transliterating the English opening into Malayalam script. The specialized routes are useful for **separate-language** recordings, not a solved code-switcher.
 
+
+#### Transcription latency: Direct routing vs experimental AUTO
+
+In manual Pixel 7a tests, directly routing short English or Malayalam recordings to their respective recognition engines produced perceived transcription turnaround of approximately **1–2 seconds** in some runs.
+
+Noticeably longer delays appeared after enabling experimental automatic language detection and routing.
+
+The AUTO path adds language identification and routing decisions before transcription. However, the additional latency has not yet been isolated through controlled, same-audio measurements. Model initialization, audio decoding, recognition settings, and recording duration may also affect performance.
+
+**Key observation:** The language-specific recognition paths can be responsive in short recordings. The current optimization challenge is improving automatic language selection without sacrificing that responsiveness or recognition reliability.
+
+These 1–2-second observations are informal manual tests, not validated p50/p95 measurements or a guaranteed transcription time.
+
+The mixed-language benchmark timings below come from different experimental recognition paths and should not be interpreted as a direct measurement of AUTO routing overhead.
+
+**Next step:** Instrument the pipeline to measure audio decoding, language identification, model loading, recognition, and text insertion separately, using identical saved recordings across configurations.
+
+
 ### 5. Alternative language detection: VoxLingua107 / SpeechBrain ONNX
 
 A dedicated SpeechBrain/VoxLingua107 classifier was explored on Mac to test whether language ID could be separated from Whisper recognition. **Five classifier-head ONNX/PyTorch comparisons**, using the **same precomputed acoustic features**, returned matching top classes:
