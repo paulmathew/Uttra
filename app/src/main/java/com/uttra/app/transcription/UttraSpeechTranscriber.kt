@@ -11,14 +11,15 @@ internal class UttraSpeechTranscriber(
     context: Context
 ) : SpeechTranscriber {
 
+    private val appContext = context.applicationContext
     private val englishTranscriber =
         WhisperNativeTranscriber(context.applicationContext)
 
     private val malayalamTranscriber =
         IndicMalayalamTranscriber(context.applicationContext)
 
-    private val languageDetector =
-        WhisperLanguageDetector(context.applicationContext)
+//    private val languageDetector =
+//        WhisperLanguageDetector(context.applicationContext)
 
     override suspend fun transcribe(
         audioFile: File,
@@ -53,11 +54,14 @@ internal class UttraSpeechTranscriber(
                             )
                         )
                     } else {
-
+                        val requestDecoder = ReusingAudioDecoder()
                         val detectionStartedAtMs = SystemClock.elapsedRealtime()
 
                         val detectionResult = try {
-                            languageDetector.detect(audioFile)
+                            WhisperLanguageDetector(
+                                context = appContext,
+                                audioDecoder = requestDecoder
+                            ).detect(audioFile)
                         } finally {
                             logd {
                                 "UTTRA LATENCY: stage=language_detection " +
@@ -72,14 +76,20 @@ internal class UttraSpeechTranscriber(
                         when (detection.language) {
 
                             TranscriptionLanguage.ENGLISH -> {
-                                englishTranscriber.transcribe(
+                                WhisperNativeTranscriber(
+                                    context = appContext,
+                                    audioDecoder = requestDecoder
+                                ).transcribe(
                                     audioFile,
                                     TranscriptionLanguage.ENGLISH
                                 )
                             }
 
                             TranscriptionLanguage.MALAYALAM -> {
-                                malayalamTranscriber.transcribe(
+                                IndicMalayalamTranscriber(
+                                    context = appContext,
+                                    audioDecoder = requestDecoder
+                                ).transcribe(
                                     audioFile,
                                     TranscriptionLanguage.MALAYALAM
                                 )
@@ -108,4 +118,34 @@ internal class UttraSpeechTranscriber(
             }
         }
     }
+
+
+    private class ReusingAudioDecoder(
+        private val delegate: AudioDecoder = AndroidAudioDecoder()
+    ) : AudioDecoder {
+
+        private var cachedFile: File? = null
+        private var cachedSamples: FloatArray? = null
+
+        override suspend fun decodeToPcm16kMono(
+            audioFile: File
+        ): Result<FloatArray> {
+
+            if (cachedFile == audioFile) {
+                cachedSamples?.let { samples ->
+                    logd {
+                        "UTTRA AUTO PCM: reused samples=${samples.size}"
+                    }
+                    return Result.success(samples)
+                }
+            }
+
+            return delegate.decodeToPcm16kMono(audioFile)
+                .onSuccess { samples ->
+                    cachedFile = audioFile
+                    cachedSamples = samples
+                }
+        }
+    }
+
 }
