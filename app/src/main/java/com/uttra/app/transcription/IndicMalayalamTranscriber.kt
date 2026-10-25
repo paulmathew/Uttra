@@ -45,12 +45,19 @@ internal class IndicMalayalamTranscriber(
 
             logd { "INDIC TRANSCRIBER: Decoding audio" }
 
+            val decodeStartedMs = SystemClock.elapsedRealtime()
+
             val samples = audioDecoder
                 .decodeToPcm16kMono(audioFile)
                 .getOrThrow()
 
-            logd { "INDIC TRANSCRIBER: Loading model" }
+            logd {
+                "UTTRA LATENCY: stage=indic_audio_decode " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - decodeStartedMs}"
+            }
 
+            logd { "INDIC TRANSCRIBER: Loading model" }
+            val modelSetupStartedMs = SystemClock.elapsedRealtime()
             val config = OfflineRecognizerConfig(
                 featConfig = FeatureConfig(
                     sampleRate = 16000,
@@ -68,7 +75,10 @@ internal class IndicMalayalamTranscriber(
             )
 
             val recognizer = OfflineRecognizer(config = config)
-
+            logd {
+                "UTTRA LATENCY: stage=indic_model_setup " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - modelSetupStartedMs}"
+            }
             try {
                 val stream = recognizer.createStream()
 
@@ -87,6 +97,11 @@ internal class IndicMalayalamTranscriber(
 
                     val inferenceMs =
                         SystemClock.elapsedRealtime() - inferenceStartMs
+
+                    logd {
+                        "UTTRA LATENCY: stage=indic_inference " +
+                                "elapsedMs=$inferenceMs"
+                    }
 
                     val text = recognizer
                         .getResult(stream)

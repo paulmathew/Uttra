@@ -7,6 +7,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import android.os.SystemClock
 
 class WhisperNativeTranscriber(
     private val context: Context,
@@ -22,6 +23,7 @@ class WhisperNativeTranscriber(
 
             logd { "WHISPER STEP 1: Installing model" }
 
+            val modelSetupStartedMs = SystemClock.elapsedRealtime()
             val modelFile = WhisperModelInstaller.install(
                 context.applicationContext
             )
@@ -40,17 +42,26 @@ class WhisperNativeTranscriber(
             check(handle != 0L) {
                 "Failed to initialize Whisper Base"
             }
+            logd {
+                "UTTRA LATENCY: stage=whisper_model_setup " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - modelSetupStartedMs}"
+            }
 
             try {
                 logd { "WHISPER STEP 3: Decoding audio" }
+
+                val decodeStartedMs = SystemClock.elapsedRealtime()
 
                 val samples = audioDecoder
                     .decodeToPcm16kMono(audioFile)
                     .getOrThrow()
 
                 logd {
-                    "WHISPER STEP 4: Starting inference, samples=${samples.size}"
+                    "UTTRA LATENCY: stage=whisper_audio_decode " +
+                            "elapsedMs=${SystemClock.elapsedRealtime() - decodeStartedMs}"
                 }
+
+                val inferenceStartedMs = SystemClock.elapsedRealtime()
 
                 val recognizedText = UttraNativeBridge.nativeTranscribe(
                     contextHandle = handle,
@@ -59,7 +70,8 @@ class WhisperNativeTranscriber(
                 )
 
                 logd {
-                    "WHISPER STEP 5: Inference completed"
+                    "UTTRA LATENCY: stage=whisper_inference " +
+                            "elapsedMs=${SystemClock.elapsedRealtime() - inferenceStartedMs}"
                 }
 
                 val cleanedText = TranscriptionTextFormatter

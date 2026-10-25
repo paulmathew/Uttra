@@ -7,6 +7,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import android.os.SystemClock
 
 internal data class LanguageDetection(
     val language: TranscriptionLanguage?,
@@ -33,6 +34,9 @@ internal class WhisperLanguageDetector(
                 "Audio recording is missing or empty"
             }
 
+
+            val modelSetupStartedMs = SystemClock.elapsedRealtime()
+
             val modelFile = WhisperModelInstaller.install(
                 context.applicationContext
             )
@@ -45,9 +49,23 @@ internal class WhisperLanguageDetector(
                 "Failed to initialize Whisper language detector"
             }
 
+            logd {
+                "UTTRA LATENCY: stage=lid_model_setup " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - modelSetupStartedMs}"
+            }
+
+
+
+            val decodeStartedMs = SystemClock.elapsedRealtime()
+
             val samples = audioDecoder
                 .decodeToPcm16kMono(audioFile)
                 .getOrThrow()
+
+            logd {
+                "UTTRA LATENCY: stage=lid_audio_decode " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - decodeStartedMs}"
+            }
 
 
             check(samples.isNotEmpty()) {
@@ -82,10 +100,19 @@ internal class WhisperLanguageDetector(
                 )
             }
 
+
+            val inferenceStartedMs = SystemClock.elapsedRealtime()
+
             val scores = UttraNativeBridge.nativeDetectLanguage(
                 contextHandle = handle,
                 audioSamples = samples
             )
+
+            logd {
+                "UTTRA LATENCY: stage=lid_inference " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - inferenceStartedMs}"
+            }
+
 
             check(scores.size == 2) {
                 "Invalid language detection result"

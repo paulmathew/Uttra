@@ -415,4 +415,76 @@ internal object WhisperTestRunner {
         }
     }
 
+
+    fun compareDirectVsAuto(
+        context: Context,
+        fileName: String
+    ) {
+        val directLanguage = when (fileName) {
+            "english_03.m4a" -> TranscriptionLanguage.ENGLISH
+            "malayalam_03.m4a" -> TranscriptionLanguage.MALAYALAM
+            else -> {
+                logd { "BENCH 7.9: Unsupported fixture $fileName" }
+                return
+            }
+        }
+
+        val appContext = context.applicationContext
+        val benchmarkFile = File(
+            appContext.filesDir,
+            "speech_benchmarks/$fileName"
+        )
+
+        if (!benchmarkFile.isFile || benchmarkFile.length() == 0L) {
+            logd { "BENCH 7.9: Missing fixture $fileName" }
+            return
+        }
+
+        scope.launch {
+            try {
+                for (attempt in 1..3) {
+                    for (language in listOf(
+                        directLanguage,
+                        TranscriptionLanguage.AUTO
+                    )) {
+                        val route = if (
+                            language == TranscriptionLanguage.AUTO
+                        ) "AUTO" else "DIRECT"
+
+                        logd {
+                            "BENCH 7.9 START: file=$fileName " +
+                                    "attempt=$attempt route=$route"
+                        }
+
+                        val startMs = SystemClock.elapsedRealtime()
+
+                        val result = UttraSpeechTranscriber(appContext)
+                            .transcribe(
+                                audioFile = benchmarkFile,
+                                language = language
+                            )
+
+                        val elapsedMs =
+                            SystemClock.elapsedRealtime() - startMs
+
+                        logd {
+                            "BENCH 7.9 END: file=$fileName " +
+                                    "attempt=$attempt route=$route " +
+                                    "elapsedMs=$elapsedMs " +
+                                    "success=${result.isSuccess} " +
+                                    "error=${result.exceptionOrNull()?.message}"
+                        }
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                loge(e) {
+                    "BENCH 7.9 FAILED: file=$fileName"
+                }
+            }
+        }
+    }
+
+
 }
