@@ -349,8 +349,18 @@ Java_com_uttra_app_transcription_UttraNativeBridge_nativeDetectLanguage(
         return nullptr;
     }
 
+    whisper_reset_timings(context);
     const auto startTime =
             std::chrono::steady_clock::now();
+
+    __android_log_print(
+            ANDROID_LOG_INFO,
+            "UttraNative",
+            "UTTRA LID CONTEXT: audioCtx=%d melWindowFrames=%d samples=%d",
+            whisper_n_audio_ctx(context),
+            2 * whisper_n_audio_ctx(context),
+            sampleCount
+    );
 
     // Prepare mel features from 16 kHz mono PCM samples.
     const int melResult = whisper_pcm_to_mel(
@@ -387,6 +397,24 @@ Java_com_uttra_app_transcription_UttraNativeBridge_nativeDetectLanguage(
 
     const auto detectionEndTime =
             std::chrono::steady_clock::now();
+
+
+    if (auto* timings = whisper_get_timings(context)) {
+        __android_log_print(
+                ANDROID_LOG_INFO,
+                "UttraNative",
+                "UTTRA LID STAGES: "
+                "encoderMs=%.2f decoderMs=%.2f "
+                "batchDecoderMs=%.2f promptMs=%.2f",
+                static_cast<double>(timings->encode_ms),
+                static_cast<double>(timings->decode_ms),
+                static_cast<double>(timings->batchd_ms),
+                static_cast<double>(timings->prompt_ms)
+        );
+
+        delete timings;
+    }
+
 
     const auto melMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(
