@@ -21,6 +21,39 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(-O3)
 endif()
 
+
+
+# Experiment 7.9H: Pixel 7a ARM64 optimization.
+# Opt-in only: other ARM64 devices may not support these instructions.
+option(
+        UTTRA_ENABLE_PIXEL7A_ARM64_OPT
+        "Enable experimental ARM64 DOTPROD + FP16 optimization"
+        OFF
+)
+
+if(ANDROID
+        AND CMAKE_BUILD_TYPE STREQUAL "Debug"
+        AND ANDROID_ABI STREQUAL "arm64-v8a"
+        AND UTTRA_ENABLE_PIXEL7A_ARM64_OPT)
+
+    set(GGML_CPU_ARM_ARCH
+            "armv8.2-a+dotprod+fp16"
+            CACHE STRING "" FORCE)
+
+    unset(HAVE_DOTPROD CACHE)
+    unset(HAVE_FP16_VECTOR_ARITHMETIC CACHE)
+
+else()
+    # Clear the previously forced architecture when opting out.
+    # CMake may retain values from earlier builds.
+    if(GGML_CPU_ARM_ARCH STREQUAL "armv8.2-a+dotprod+fp16")
+        unset(GGML_CPU_ARM_ARCH CACHE)
+        unset(HAVE_DOTPROD CACHE)
+        unset(HAVE_FP16_VECTOR_ARITHMETIC CACHE)
+    endif()
+endif()
+
+
 # Build Whisper.cpp and its GGML dependencies.
 add_subdirectory(
         "${WHISPER_DIR}"
