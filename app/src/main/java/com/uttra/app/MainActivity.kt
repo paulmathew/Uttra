@@ -110,9 +110,14 @@ class MainActivity : ComponentActivity() {
                 intent?.getStringExtra("benchmark_file")
 
 
+
             when (benchmarkName) {
+                "english_02.m4a",
                 "english_03.m4a",
-                "malayalam_03.m4a" -> {
+                "malayalam_01.m4a",
+                "malayalam_03.m4a",
+                "quiet_malayalam_01.m4a",
+                "quiet_english_01.m4a",-> {
                     logd {
                         "BENCH 7.9 TRIGGER: $benchmarkName"
                     }
@@ -122,16 +127,22 @@ class MainActivity : ComponentActivity() {
                         fileName = benchmarkName
                     )
                 }
+                "silence_01.m4a" -> {
+                    logd {
+                        "BENCH 7.9 SILENCE TRIGGER: $benchmarkName"
+                    }
+
+                    WhisperTestRunner.detectBenchmark(
+                        context = applicationContext,
+                        fileName = benchmarkName
+                    )
+                }
 
                 "english_01.m4a",
-                "english_02.m4a",
-                "malayalam_01.m4a",
                 "malayalam_02.m4a",
-                "quiet_malayalam_01.m4a",
-                "quiet_english_01.m4a",
                 "live_ml_failed_03.m4a",
                 "live_auto_rejected_04.m4a",
-                "silence_01.m4a" -> {
+                 -> {
                     logd {
                         "LEGACY BENCHMARK DISABLED: $benchmarkName"
                     }
@@ -143,6 +154,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+
 
         }
 

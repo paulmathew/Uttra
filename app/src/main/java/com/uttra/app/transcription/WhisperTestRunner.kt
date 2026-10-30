@@ -421,8 +421,14 @@ internal object WhisperTestRunner {
         fileName: String
     ) {
         val directLanguage = when (fileName) {
-            "english_03.m4a" -> TranscriptionLanguage.ENGLISH
-            "malayalam_03.m4a" -> TranscriptionLanguage.MALAYALAM
+            "english_02.m4a",
+            "english_03.m4a",
+            "quiet_english_01.m4a",-> TranscriptionLanguage.ENGLISH
+
+            "malayalam_01.m4a",
+            "malayalam_03.m4a",
+            "quiet_malayalam_01.m4a"-> TranscriptionLanguage.MALAYALAM
+
             else -> {
                 logd { "BENCH 7.9: Unsupported fixture $fileName" }
                 return
@@ -472,7 +478,8 @@ internal object WhisperTestRunner {
                                     "attempt=$attempt route=$route " +
                                     "elapsedMs=$elapsedMs " +
                                     "success=${result.isSuccess} " +
-                                    "error=${result.exceptionOrNull()?.message}"
+                                    "error=${result.exceptionOrNull()?.message} " +
+                                    "text='${result.getOrNull()}'"
                         }
                     }
                 }
