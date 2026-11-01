@@ -37,7 +37,23 @@ class UttraOverlayController(
     private var completionPending = false
     // Record Again is a visual substate of Processing; existing OverlayState stays unchanged.
     private var showingRecordAgain = false
+    private var recordAgainTitle = "Couldn't transcribe"
     private val handler = Handler(Looper.getMainLooper())
+    private val delayedOverlayHide = Runnable {
+        if (!editorAvailable) {
+            when (currentState) {
+                OverlayState.Ready -> hide()
+
+                OverlayState.Processing -> {
+                    if (showingRecordAgain) {
+                        onDismissRecordAgainTapped()
+                    }
+                }
+
+                else -> Unit
+            }
+        }
+    }
     private val processingCompletion = Runnable {
         onProcessingCompleted()
     }
@@ -94,6 +110,9 @@ class UttraOverlayController(
 
 
     fun hide() {
+        handler.removeCallbacks(delayedOverlayHide)
+        feedbackPopup.dismiss()
+
         val view = overlayView ?: return
 
         try {
@@ -125,6 +144,8 @@ class UttraOverlayController(
         if (currentState != OverlayState.Ready || startPending) {
             return
         }
+        handler.removeCallbacks(delayedOverlayHide)
+        feedbackPopup.dismiss()
 
         startPending = true
 
@@ -323,13 +344,28 @@ class UttraOverlayController(
     /** Failed recognition: offer a fresh recording, never reprocess old audio. */
     fun onTranscriptionFailedRecordAgain() {
         if (currentState != OverlayState.Processing) return
-        if (!editorAvailable) {
-            onProcessingCompleted()
-            return
-        }
+
+        recordAgainTitle = "Couldn't transcribe"
         showingRecordAgain = true
         renderState()
+
+        if (!editorAvailable) {
+            onEditorAvailabilityChanged(false)
+        }
     }
+
+    fun onInsertionBlockedRecordAgain() {
+        if (currentState != OverlayState.Processing) return
+
+        recordAgainTitle = "Couldn't insert"
+        showingRecordAgain = true
+        renderState()
+
+        if (!editorAvailable) {
+            onEditorAvailabilityChanged(false)
+        }
+    }
+
 
     private fun onRecordAgainTapped() {
         if (currentState != OverlayState.Processing || !showingRecordAgain) return
@@ -365,7 +401,7 @@ class UttraOverlayController(
         }
 
         val title = TextView(context).apply {
-            text = "Couldn't transcribe"
+            text = recordAgainTitle
             textSize = 13f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER_VERTICAL
@@ -409,14 +445,35 @@ class UttraOverlayController(
         ))
     }
 
-    fun onProcessingCompleted() {
+
+
+    fun onProcessingCompleted(insertionSucceeded: Boolean = false) {
         if (currentState != OverlayState.Processing) return
 
         showingRecordAgain = false
         updateState(OverlayState.Ready)
         onEditorAvailabilityChanged(editorAvailable)
 
+        if (insertionSucceeded && editorAvailable && overlayView != null) {
+            logd {
+                "UTTRA FEEDBACK: Eligible after successful text insertion"
+            }
+
+            try {
+                feedbackPopup.show { rating ->
+                    logd {
+                        "UTTRA FEEDBACK: Selected rating=$rating (not yet persisted)"
+                    }
+                }
+            } catch (e: Exception) {
+                loge(e) {
+                    "UTTRA FEEDBACK: Failed to show popup"
+                }
+            }
+        }
     }
+
+
 
 
     private fun resizeOverlay(widthDp: Int) {
@@ -430,27 +487,36 @@ class UttraOverlayController(
         windowManager.updateViewLayout(view, params)
     }
 
+
     fun onEditorAvailabilityChanged(available: Boolean) {
         editorAvailable = available
-//        logd {
-//            "Editor availability: available=$available, state=$currentState"
-//        }
+
+        if (available) {
+            handler.removeCallbacks(delayedOverlayHide)
+        }
+
         when (currentState) {
             OverlayState.Hidden -> {
                 if (available) show()
             }
 
             OverlayState.Ready -> {
-                if (!available) hide()
+                if (!available) {
+                    handler.removeCallbacks(delayedOverlayHide)
+                    handler.postDelayed(delayedOverlayHide, 1200L)
+                }
             }
 
             OverlayState.Recording,
             OverlayState.Processing -> {
-                // A fresh recording needs a visible editor; close the prompt otherwise.
-                if (!available && showingRecordAgain) onDismissRecordAgainTapped()
+                if (!available && showingRecordAgain) {
+                    handler.removeCallbacks(delayedOverlayHide)
+                    handler.postDelayed(delayedOverlayHide, 1200L)
+                }
             }
         }
     }
+
 
     fun onRecordingStarted() {
         startPending = false
@@ -494,5 +560,9 @@ class UttraOverlayController(
 
         updateState(OverlayState.Ready)
         onEditorAvailabilityChanged(editorAvailable)
+    }
+
+    private val feedbackPopup by lazy {
+        UttraFeedbackPopup(context, windowManager)
     }
 }

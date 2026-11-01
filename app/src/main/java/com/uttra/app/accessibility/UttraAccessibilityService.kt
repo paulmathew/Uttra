@@ -64,24 +64,55 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
         )
     }
 
+
     private fun isOriginalEditorStillFocused(): Boolean {
-        if (editorTargetInvalidated) return false
+        if (editorTargetInvalidated) {
+            logw { "UTTRA TARGET CHECK FAILED: editor invalidated" }
+            return false
+        }
+
         val target = editorTarget ?: return false
 
         val current = rootInActiveWindow
             ?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            ?: return false
+            ?: run {
+                logw { "UTTRA TARGET CHECK FAILED: no focused editor" }
+                return false
+            }
 
-        return current.isEditable &&
+        val editable = current.isEditable &&
                 current.isEnabled &&
-                !current.isPassword &&
-                current == target.node &&
-                current.packageName?.toString() == target.packageName &&
-                current.windowId == target.windowId &&
-                current.viewIdResourceName == target.viewId &&
-              //  current.text?.toString().orEmpty() == target.originalText
-                getActualEditorText(current) == target.originalText
+                !current.isPassword
+
+        val sameNode = current == target.node
+        val samePackage =
+            current.packageName?.toString() == target.packageName
+        val sameWindow = current.windowId == target.windowId
+        val sameView = current.viewIdResourceName == target.viewId
+        val sameText = getActualEditorText(current) == target.originalText
+
+        val valid = editable &&
+                sameNode &&
+                samePackage &&
+                sameWindow &&
+                sameView &&
+                sameText
+
+        if (!valid) {
+            logw {
+                "UTTRA TARGET CHECK FAILED: " +
+                        "editable=$editable " +
+                        "sameNode=$sameNode " +
+                        "samePackage=$samePackage " +
+                        "sameWindow=$sameWindow " +
+                        "sameView=$sameView " +
+                        "sameText=$sameText"
+            }
+        }
+
+        return valid
     }
+
 
     private var editorTargetInvalidated = false
 
@@ -411,7 +442,7 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
                     if (targetMatches) "MATCH" else "MISMATCH"
         }
 
-
+        var insertionSucceeded = false
         if (targetMatches && !text.isNullOrBlank()) {
             logInputConnectionState("TRANSCRIPTION_READY")
             //val inserted = insertTranscriptionIntoFocusedEditor(text)
@@ -423,6 +454,8 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
             }
 
             if (inserted) {
+                insertionSucceeded = true
+
                 logd {
                     "UTTRA INSERTION PASSED"
                 }
@@ -443,7 +476,16 @@ class UttraAccessibilityService: AccessibilityService(), OverlayRecordingListene
         editorTargetInvalidated = false
         emptyInputSnapshot = null
         clearEditorSession()
-        overlayController.onProcessingCompleted()
+        //overlayController.onProcessingCompleted(insertionSucceeded)
+
+        if (insertionSucceeded) {
+            overlayController.onProcessingCompleted(
+                insertionSucceeded = true
+            )
+        } else {
+            overlayController.onInsertionBlockedRecordAgain()
+        }
+
     }
 
     private fun handleTranscriptionFailure(sessionId: String) {
