@@ -33,6 +33,7 @@ Uttra explores a focused question: **Can native Android dictation work across ot
 | **Interaction** | Compose onboarding, branded microphone bubble, waveform recording state, Done/Cancel, processing indicator and Record Again |
 | **Reliability** | Editor/focus/session checks, cursor-aware insertion, blank-output filtering and refusal to insert when the target has changed |
 | **Language handling** | Experimental whole-recording English/Malayalam AUTO router in **debug builds**, with score-based rejection |
+| **Post-dictation feedback** | Optional 0–100 user-reported accuracy slider after successful text insertion; Skip/Done dismiss the popup. Ratings are not stored or used for model training. |
 
 > **Beta status:** English and Malayalam have been demonstrated in **separate recordings**. Automatic switching *within the same recording* is **not reliably supported**. The language chips on the home screen indicate supported languages; they are **not selectors**. The current non-debug recording path defaults to Malayalam and is not yet equivalent to the debug AUTO experience.
 
@@ -54,10 +55,10 @@ Real Pixel 7a screen captures from a single development walkthrough. The English
   <img src="docs/assets/screenshots/03-recording.png" alt="Uttra recording waveform over another Android app" width="150" />
   <img src="docs/assets/screenshots/04-processing.png" alt="Uttra processing transcription overlay" width="150" />
   <img src="docs/assets/screenshots/06-english-malayalam.png" alt="English and Malayalam output inserted in an external text editor" width="150" />
+<img src="docs/assets/screenshots/07-post-dictation-feedback.png" alt="Compact post-dictation accuracy feedback slider displayed over an external editor" width="150" />
 </p>
 
-<p align="center"><sub>Permission setup · Home · Recording · Transcribing · Cross-app text insertion</sub></p>
-
+<p align="center"><sub>Permission setup · Home · Recording · Transcribing · Cross-app text insertion · Optional feedback</sub></p>
 
 ## ⚡ Engineering at a Glance
 
