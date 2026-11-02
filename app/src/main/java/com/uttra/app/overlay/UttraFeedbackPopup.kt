@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import android.graphics.drawable.InsetDrawable
 
 internal class UttraFeedbackPopup(
     private val context: Context,
@@ -58,7 +59,7 @@ internal class UttraFeedbackPopup(
         )
 
         header.addView(ratingLabel)
-
+        var confirmButton: TextView? = null
         val slider = SeekBar(context).apply {
             max = 100
             progress = 50
@@ -80,6 +81,9 @@ internal class UttraFeedbackPopup(
                         fromUser: Boolean
                     ) {
                         ratingLabel.text = "$progress / 100"
+                        if (fromUser) {
+                            confirmButton?.visibility = View.VISIBLE
+                        }
                     }
 
                     override fun onStartTrackingTouch(
@@ -93,33 +97,43 @@ internal class UttraFeedbackPopup(
             )
         }
 
-        val actions = LinearLayout(context).apply {
+//        val actions = LinearLayout(context).apply {
+//            orientation = LinearLayout.HORIZONTAL
+//            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+//        }
+        val controls = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
         }
 
-        val skip = TextView(context).apply {
-            text = "Skip"
-            textSize = 13f
+        val close = TextView(context).apply {
+            text = "×"
+            textSize = 24f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            contentDescription = "Skip accuracy rating"
+            includeFontPadding = false
+            contentDescription = "Dismiss accuracy rating"
 
             setOnClickListener { dismiss() }
         }
 
-        val done = TextView(context).apply {
-            text = "Done"
-            textSize = 13f
+        val confirm = TextView(context).apply {
+            text = "✓"
+            textSize = 18f
             setTextColor(darkGreen)
             gravity = Gravity.CENTER
-            contentDescription = "Finish accuracy rating"
+            includeFontPadding = false
+            contentDescription = "Confirm accuracy rating"
 
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 14.dp().toFloat()
-                setColor(mint)
-            }
+            visibility = View.INVISIBLE
+
+            background = InsetDrawable(
+                GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(mint)
+                },
+                6.dp()
+            )
 
             setOnClickListener {
                 val rating = slider.progress
@@ -128,15 +142,26 @@ internal class UttraFeedbackPopup(
             }
         }
 
-        actions.addView(
-            skip,
-            LinearLayout.LayoutParams(68.dp(), 44.dp())
+        confirmButton = confirm
+
+        controls.addView(
+            close,
+            LinearLayout.LayoutParams(44.dp(), 44.dp())
         )
 
-        actions.addView(
-            done,
-            LinearLayout.LayoutParams(76.dp(), 44.dp())
+        controls.addView(
+            slider,
+            LinearLayout.LayoutParams(0, 44.dp(), 1f).apply {
+                marginStart = 4.dp()
+                marginEnd = 4.dp()
+            }
         )
+
+        controls.addView(
+            confirm,
+            LinearLayout.LayoutParams(44.dp(), 44.dp())
+        )
+
 
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -151,19 +176,24 @@ internal class UttraFeedbackPopup(
                 setColor(darkGreen)
             }
 
+//            elevation = 8.dp().toFloat()
+//
+//            addView(header)
+//
+//            addView(
+//                slider,
+//                LinearLayout.LayoutParams(
+//                    LinearLayout.LayoutParams.MATCH_PARENT,
+//                    28.dp()
+//                )
+//            )
+//
+//           addView(actions)
+
             elevation = 8.dp().toFloat()
 
             addView(header)
-
-            addView(
-                slider,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    28.dp()
-                )
-            )
-
-            addView(actions)
+            addView(controls)
         }
 
         val params = WindowManager.LayoutParams(
@@ -176,7 +206,7 @@ internal class UttraFeedbackPopup(
         ).apply {
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             x = 8.dp()
-            y = (-195).dp()
+            y = (-155).dp()
         }
 
         windowManager.addView(card, params)
